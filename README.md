@@ -1,6 +1,6 @@
 # Mixcoin-JS
 
-This is an implementation of the Mixcoin protocol (Bonneau, Narayanan, Miller, Clark, Kroll, Felten 2014). [paper](https://eprint.iacr.org/2014/077.pdf)
+This is an implementation of the Mixcoin protocol (Bonneau, Narayanan, Miller, Clark, Kroll, Felten 2014). [link to paper](https://eprint.iacr.org/2014/077.pdf)
 
 # Documentation
 
@@ -41,9 +41,9 @@ returns the following, if accepted:
 
 `val`: value to be mixed, in satoshi
 
-`send`: deadline for sending funds
+`send`: deadline for sending funds, in unix epoch time
 
-`return`: deadline for distributing funds
+`return`: deadline for distributing funds, in unix epoch time
 
 `out`: transfer destination address
 

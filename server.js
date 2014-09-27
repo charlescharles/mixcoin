@@ -13,7 +13,7 @@ var app = express();
 app.use(express.bodyParser());
 app.use(app.router);
 
-// do this right
+// lol do this right
 var privateKey = sr.randomBuffer(32);
 var ck = new CoinKey(privateKey, true);
 
@@ -38,7 +38,7 @@ var registerMixRequest = function(warrantRequestJson) {
 
   var keys = generateKeyPair();
   var privateKey = keys.privateKey
-  var escrowAddress = keys.publicKey
+  var escrowAddress = keys.publicKey,
 
   // store request
 
