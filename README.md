@@ -8,7 +8,7 @@ This is an implementation of the Mixcoin protocol (Bonneau, Narayanan, Miller, C
 
 ### API
 
-> warrant
+`/warrant`
 
 ```json
 {
