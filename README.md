@@ -40,11 +40,19 @@ returns the following, if accepted:
 
 
 `val`: value to be mixed, in satoshi
+
 `send`: deadline for sending funds
+
 `return`: deadline for distributing funds
+
 `out`: transfer destination address
+
 `fee`: mixing fee, in basis points
+
 `nonce`: random 32 bit number
+
 `confirm`: number of blocks mix will wait for payment confirmation
+
 `escrow`: escrow address to send `val` to
+
 `warrant`: request JSON, along with `escrow` field, canonicalized, serialized, and signed with mix's private key
