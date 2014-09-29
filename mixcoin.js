@@ -3,15 +3,15 @@ module.exports = Mixcoin
 var _ = require('lodash')
 var canonicalize = require('canonical-json')
 
-var crypto = require('crypto')
-var sr = require('secure-random')
-
 var EventEmitter = require('events').EventEmitter
 
 var bitcore = require('bitcore')
 var networks = bitcore.networks
 var WalletKey = bitcore.WalletKey
 var coinUtil = bitcore.util
+var Peer = bitcore.Peer
+var PeerManager = bitcore.PeerManager
+
 
 /**
 * An implementation of the Mixcoin accountable mixing service protocol
@@ -58,6 +58,14 @@ function Mixcoin (opts) {
   * @type {WalletKey|Buffer}
   */
   self.escrowAddresses = []
+
+  self.peerManager = new PeerManager({network: networks.testnet})
+
+  self.peerManager.on('connection', function(conn) {
+    conn.on('block', self._handleBlock.bind(self))
+  })
+
+  self.peerManager.start()
 }
 
 Mixcoin.prototype.handleChunkRequest = function(chunkJson, cb) {
@@ -106,10 +114,23 @@ Mixcoin.prototype._registerNewChunk = function (chunkJson) {
   self.chunkTable[chunk.escrow] = chunk
 }
 
-Mixcoin.prototype._generateEscrowKey = function() {
+Mixcoin.prototype._generateEscrowKey = function () {
   var self = this
   var escrowKey = new WalletKey(self.escrowKeyOptions)
   escrowKey.generate()
   return escrowKey
-  self.escrowAddresses.push(escrowKey)
+}
+
+Mixcoin.prototype._handleBlock = function (info) {
+  var block = info.message
+  var txs = block.tx
+
+  for (var tx in txs) {
+    var txsIn = tx.in
+    var txsOut = tx.out
+
+    // check if there's a transaction sending correct value to
+    // one of the escrow addresses
+    // TODO assume all chunk values are the same?
+  }
 }
