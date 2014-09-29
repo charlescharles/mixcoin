@@ -13,6 +13,10 @@ var networks = bitcore.networks
 var WalletKey = bitcore.WalletKey
 var coinUtil = bitcore.util
 
+/**
+* An implementation of the Mixcoin accountable mixing service protocol
+* @param {string|Buffer} opts
+*/
 function Mixcoin (opts) {
   var self = this
 
