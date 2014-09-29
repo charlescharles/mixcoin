@@ -7,9 +7,12 @@ var crypto = require('crypto')
 var ecdsa = require('ecdsa')
 var sr = require('secure-random')
 
+var EventEmitter = require('events').EventEmitter
+
 var bitcore = require('bitcore')
 var networks = bitcore.networks
 var WalletKey = bitcore.WalletKey
+var coinUtil = bitcore.util
 
 function Mixcoin (opts) {
   var self = this
@@ -54,9 +57,9 @@ function Mixcoin (opts) {
   self.escrowAddresses = []
 }
 
-Mixcoin.prototype.handleChunkRequest = function(chunkJson, cb {
+Mixcoin.prototype.handleChunkRequest = function(chunkJson, cb) {
   var self = this
-  var err = self.validateChunkRequest(chunkJson)
+  var err = self._validateChunkRequest(chunkJson)
   if (err) return cb(err)
 
   // generate a fresh escrow keypair
@@ -65,15 +68,12 @@ Mixcoin.prototype.handleChunkRequest = function(chunkJson, cb {
 
   chunkJson.escrow = escrowAddress
 
-  // serialize chunk json in canonical form
-  var canonicalizedChunk = canonicalize.stringify(chunkJson)
+  // serialize chunk json in canonical form, hash it
+  var serializedChunk = JSON.stringify(canonicalize(chunkJson))
+  var chunkHash = coinUtil.sha256(serializedChunk)
 
-  // sign the serialized chunk
-  var mixPrivKey = bitcore.buffertools.toHex(self.mixKey.privKey.private)
-
-  // TODO: sign the hash instead of the chunk
-  var signature = ecdsa.sign(canonicalizedChunk, mixPrivKey)
-
+  var signature = ecdsa.sign(chunkHash, self.mixKey.privKey.private)
+  debugger
   chunkJson.warrant = signature
 
   // store escrow address and the chunk
@@ -81,9 +81,16 @@ Mixcoin.prototype.handleChunkRequest = function(chunkJson, cb {
   self._registerNewChunk(chunkJson)
 
   cb(null, chunkJson)
-})
+}
+
+Mixcoin.prototype._validateChunkRequest = function(chunkJson) {
+  var self = this
+  // TODO implement this
+  return null
+}
 
 Mixcoin.prototype._registerNewChunk = function (chunkJson) {
+  var self = this
   var chunk = _.clone(chunkJson)
 
   // escrow = escrow public key for this chunk
@@ -91,6 +98,7 @@ Mixcoin.prototype._registerNewChunk = function (chunkJson) {
 }
 
 Mixcoin.prototype._generateEscrowKey = function() {
+  var self = this
   var escrowKey = new WalletKey(self.escrowKeyOptions)
   escrowKey.generate()
   return escrowKey

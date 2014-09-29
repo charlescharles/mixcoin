@@ -8,8 +8,6 @@ This is an implementation of the Mixcoin protocol (Bonneau, Narayanan, Miller, C
 
 ### API
 
-`/warrant`
-
 ```json
 {
   "val": 100000,

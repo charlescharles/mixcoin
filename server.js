@@ -1,22 +1,35 @@
-var _ = require('underscore')
-var mixcoin = require('mixcoin')
+var mixcoin = require('./mixcoin')
 var http = require('http')
+
 var sr = require('secure-random')
+var bitcore = require('bitcore')
 
 var options = {}
-options.privateKey =sr.randomBuffer(32)
+options.privateKey = bitcore.buffertools.toHex(sr.randomBuffer(32))
 
-var mixcoinServer = mixcoin.Mixcoin(options)
+var mixcoinServer = mixcoin(options)
 
 var handleChunkRequest = function (req, res) {
-  var chunk = JSON.parse(req.body)
-  console.log(this)
+  if (req.method == 'POST') {
+    var body = ''
+    req.on('data', function(data) {
+      body += data
 
-  responseJson = mixcoinServer.handleChunkRequest(chunk)
+      if (body.length > 1e6) {
+        req.connection.destroy()
+      }
+    })
+    req.on('end', function() {
+      var chunk = JSON.parse(body)
 
-  res.writeHead(200, {'Content-Type': 'application/json'})
-  res.write(JSON.stringify(responseJson))
-  res.end()
+      mixcoinServer.handleChunkRequest(chunk, function (err, responseJson) {
+        res.writeHead(200, {'Content-Type': 'application/json'})
+        res.write(JSON.stringify(responseJson))
+        res.end()
+      })
+
+    })
+  }
 }
 
 var server = http.createServer(handleChunkRequest)
