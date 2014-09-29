@@ -4,7 +4,6 @@ var _ = require('lodash')
 var canonicalize = require('canonical-json')
 
 var crypto = require('crypto')
-var ecdsa = require('ecdsa')
 var sr = require('secure-random')
 
 var EventEmitter = require('events').EventEmitter
@@ -72,15 +71,21 @@ Mixcoin.prototype.handleChunkRequest = function(chunkJson, cb) {
   var serializedChunk = JSON.stringify(canonicalize(chunkJson))
   var chunkHash = coinUtil.sha256(serializedChunk)
 
-  var signature = ecdsa.sign(chunkHash, self.mixKey.privKey.private)
+  var sigBuf = self.mixKey.privKey.signSync(chunkHash)
+  var derSig = self._toHex(sigBuf)
+
   debugger
-  chunkJson.warrant = signature
+  chunkJson.warrant = derSig
 
   // store escrow address and the chunk
   self.escrowAddresses.push(escrowKey)
   self._registerNewChunk(chunkJson)
 
   cb(null, chunkJson)
+}
+
+Mixcoin.prototype._toHex = function (buf) {
+  return bitcore.buffertools.toHex(buf)
 }
 
 Mixcoin.prototype._validateChunkRequest = function(chunkJson) {
