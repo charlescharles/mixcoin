@@ -12,7 +12,6 @@ var coinUtil = bitcore.util
 var Peer = bitcore.Peer
 var PeerManager = bitcore.PeerManager
 
-
 /**
 * An implementation of the Mixcoin accountable mixing service protocol
 * @param {string|Buffer} opts
@@ -51,7 +50,7 @@ function Mixcoin (opts) {
   * Table of outstanding chunks
   * @type {Object} addr:string -> chunk object
   */
-  self.chunkTable = {}
+  self.chunksPendingArrival = {}
 
   /**
   * List of outstanding escrow addresses
@@ -111,7 +110,7 @@ Mixcoin.prototype._registerNewChunk = function (chunkJson) {
   var chunk = _.clone(chunkJson)
 
   // escrow = escrow public key for this chunk
-  self.chunkTable[chunk.escrow] = chunk
+  self.chunksPendingArrival[chunk.escrow] = chunk
 }
 
 Mixcoin.prototype._generateEscrowKey = function () {
