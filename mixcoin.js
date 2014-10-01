@@ -47,16 +47,23 @@ function Mixcoin (opts) {
   }
 
   /**
-  * Table of outstanding chunks
-  * @type {Object} addr:string -> chunk object
+  * Table of chunks we're waiting for
+  * @type {Object} string -> string -> object
   */
-  self.chunksPendingArrival = {}
+  self.chunks = {
+    receivable: {}
+    pendingMix: {}
+    payable: {}
+  }
 
   /**
   * List of outstanding escrow addresses
-  * @type {WalletKey|Buffer}
+  * @type {Object} addr:WalletKey -> chunk:object
   */
-  self.escrowAddresses = []
+  self.escrowAddresses = {
+    receivable: []
+    payable: []
+  }
 
   self.peerManager = new PeerManager({network: networks.testnet})
 
@@ -110,7 +117,7 @@ Mixcoin.prototype._registerNewChunk = function (chunkJson) {
   var chunk = _.clone(chunkJson)
 
   // escrow = escrow public key for this chunk
-  self.chunksPendingArrival[chunk.escrow] = chunk
+  self.chunks.receivable[chunk.escrow] = chunk
 }
 
 Mixcoin.prototype._generateEscrowKey = function () {
@@ -120,16 +127,39 @@ Mixcoin.prototype._generateEscrowKey = function () {
   return escrowKey
 }
 
+/**
+* Check if a transaction is to an escrow address and
+*   has the correct chunk value.
+**/
+Mixcoin.prototype._isIncomingTx = function (tx) {
+  for (var txOutput in tx.out) {
+    var addr = txOutput.outputAddress
+    if (self.chunks.receivable[addr] != null &&
+        self.chunks.receivable[addr].val == txOutput.value) {
+      return true
+    }
+  }
+  return false
+}
+
+/**
+* Move chunks in received transactions from receivable to
+*   pending mix. Make sure to handle the case where a single tx outputs
+*   to two escrow addresses.
+* @param {array} txs
+**/
+Mixcoin.prototype._handleReceivedTxs = function (txs) {
+
+}
+
+
 Mixcoin.prototype._handleBlock = function (info) {
   var block = info.message
+  var time = block.time
   var txs = block.tx
 
-  for (var tx in txs) {
-    var txsIn = tx.in
-    var txsOut = tx.out
+  var incomingTxs = _.filter(block.tx, self._isIncomingTx.bind(self))
 
-    // check if there's a transaction sending correct value to
-    // one of the escrow addresses
-    // TODO assume all chunk values are the same?
+
   }
 }
