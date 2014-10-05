@@ -4,6 +4,7 @@ var _ = require('lodash')
 var canonicalize = require('canonical-json')
 
 var EventEmitter = require('events').EventEmitter
+var inherits = require('inherits')
 
 var bitcore = require('bitcore')
 var networks = bitcore.networks
@@ -11,6 +12,8 @@ var WalletKey = bitcore.WalletKey
 var coinUtil = bitcore.util
 var Peer = bitcore.Peer
 var PeerManager = bitcore.PeerManager
+
+inherits(Mixcoin, EventEmitter)
 
 /**
 * An implementation of the Mixcoin accountable mixing service protocol
