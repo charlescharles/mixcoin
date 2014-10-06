@@ -2,6 +2,9 @@ module.exports = Mixcoin
 
 var _ = require('lodash')
 var canonicalize = require('canonical-json')
+var https = require('https')
+var beacon = require('nist-beacon')
+var Alea = require('alea')
 
 var EventEmitter = require('events').EventEmitter
 var inherits = require('inherits')
@@ -14,6 +17,9 @@ var Peer = bitcore.Peer
 var PeerManager = bitcore.PeerManager
 
 inherits(Mixcoin, EventEmitter)
+
+// confirmations we require for incoming chunks
+CONFIRMATIONS = 6
 
 /**
 * An implementation of the Mixcoin accountable mixing service protocol
@@ -35,6 +41,8 @@ function Mixcoin (opts) {
   self.rpcIp = opts.rpcIp
   self.rpcPort = opts.rpcPort
 
+  self.confirmations = opts.confirmations or CONFIRMATIONS
+
   // generate public key
   var keyOptions = {
     network: networks.testnet
@@ -54,9 +62,12 @@ function Mixcoin (opts) {
   * @type {Object} string -> string -> object
   */
   self.chunks = {
+    // chunks we're still waiting for
     receivable: {}
-    pendingMix: {}
-    payable: {}
+    // chunks in the mixing pool
+    mixing: {}
+    // chunks we've kept as fees; distribute txn fees from this pool
+    retained: {}
   }
 
   /**
@@ -65,7 +76,7 @@ function Mixcoin (opts) {
   */
   self.escrowAddresses = {
     receivable: []
-    payable: []
+    mixing: []
   }
 
   self.peerManager = new PeerManager({network: networks.testnet})
@@ -95,7 +106,6 @@ Mixcoin.prototype.handleChunkRequest = function(chunkJson, cb) {
   var sigBuf = self.mixKey.privKey.signSync(chunkHash)
   var derSig = self._toHex(sigBuf)
 
-  debugger
   chunkJson.warrant = derSig
 
   // store escrow address and the chunk
@@ -120,6 +130,7 @@ Mixcoin.prototype._registerNewChunk = function (chunkJson) {
   var chunk = _.clone(chunkJson)
 
   // escrow = escrow public key for this chunk
+  chunk.confirmations = 0
   self.chunks.receivable[chunk.escrow] = chunk
 }
 
@@ -130,39 +141,65 @@ Mixcoin.prototype._generateEscrowKey = function () {
   return escrowKey
 }
 
-/**
-* Check if a transaction is to an escrow address and
-*   has the correct chunk value.
-**/
-Mixcoin.prototype._isIncomingTx = function (tx) {
-  for (var txOutput in tx.out) {
-    var addr = txOutput.outputAddress
-    if (self.chunks.receivable[addr] != null &&
-        self.chunks.receivable[addr].val == txOutput.value) {
-      return true
-    }
-  }
-  return false
+Mixcoin.prototype._getIncomingOutputs = function (txs) {
+  var outputs = _.filter(txs, function (tx) {
+    return _.filter(tx.out, function (out) {
+      var addr = out.outputAddress
+      if (self.chunks.receivable[addr] != null &&
+          self.chunks.receivable[addr].val == txOutput.value) {
+        return true
+    })
+  })
+  return _.flatten(outputs)
 }
 
-/**
-* Move chunks in received transactions from receivable to
-*   pending mix. Make sure to handle the case where a single tx outputs
-*   to two escrow addresses.
-* @param {array} txs
-**/
-Mixcoin.prototype._handleReceivedTxs = function (txs) {
+Mixcoin.prototype._shouldRetainAsFee = function (beaconRandom, chunk) {
+  var feeRate = chunk.feeRate
+  var seed = chunk.nonce | beaconRandom
+  var prng = new Alea(seed)
 
+  return prng() <= feeRate
 }
 
+Mixcoin.prototype._now = function () {
+  return ((new Date()) / 1000) | 0
+}
 
+// Pick a delay uniformly in the range [0, t2 - currentTime)
+Mixcoin.prototype._generateMixDelay = function (chunk) {
+  var maxDelta = chunk.t2 - self._now()
+  return (Math.random() * maxDelta) | 0
+}
+
+Mixcoin.prototype._sendMixPayment = function (escrowAddr)
+
+/**
+* Extract incoming UTXOs from block; if enough confirmations,
+* move chunk to mixing and set
+*/
 Mixcoin.prototype._handleBlock = function (info) {
   var block = info.message
-  var time = block.time
-  var txs = block.tx
+  var blockHash = block.hash
 
-  var incomingTxs = _.filter(block.tx, self._isIncomingTx.bind(self))
+  var incomingOutputs = self._getIncomingOutputs(block.tx)
 
+  for (var output : incomingOutputs) {
+    var addr = output.outputAddress
+    chunk = self.chunks.receivable[addr]
+    chunk.confirmations = 1
+    chunk.blockHash = blockHash
 
+    // TODO: count confirmations
+    // if enough confirmations, move chunk to mixing
+    if (chunk.confirmations == self.confirmations) {
+      var beaconRandom = beacon.currentRecord(block.time)
+      if (self._shouldRetainAsFee(beaconRandom, chunk)) {
+        // keep as a fee
+      } else {
+        self.chunks.mixing[addr] = chunk
+        self.chunks.receivable[addr] = null
+
+      }
+    }
   }
 }
