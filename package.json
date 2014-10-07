@@ -1,0 +1,29 @@
+{
+  "author": "charles guo",
+  "name": "mixcoin",
+  "description": "Javascript implementation of the Mixcoin protocol.",
+  "keywords": ["bitcoin", "mixing", "mixcoin"],
+  "version": "0.1.0",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/charlescharles/mixcoin.git"
+  },
+  "main": "./lib/mixcoinServer",
+  "directories": {
+    "lib": "./lib"
+  },
+  "dependencies": {
+    "xml2js":"~0.4.4",
+    "secure-random":"~1.1.1",
+    "bitcore":"~0.1.37",
+    "lodash":"~2.4.1",
+    "canonical-json":"~0.0.4",
+    "nist-beacon":"~0.1.4",
+    "alea":"~0.0.9",
+    "inherits":"~2.0.1"
+  },
+  "engines": {
+    "node": "*"
+  },
+  "license": "MIT"
+}
