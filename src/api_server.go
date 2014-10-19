@@ -2,33 +2,76 @@ package main
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"fmt"
 	"log"
-	mixcoin "mixcoin/server"
+	mixcoin "mixcoin"
 	"net/http"
 )
 
-type ChunkRequest struct {
-	val      int
-	sendBy   int
-	returnBy int
-	outAdd   string
-	fee      int
-	nonce    int
-	confirm  int
+type ApiConfig struct {
+	user          string
+	pass          string
+	walletAddress string
+	apiPort       int
 }
 
-func handleChunkRequest(rw http.ResponseWriter, req *http.Request) {
-	if err != nil {
-		panic()
-	}
-	var chunkRequest ChunkRequest
-	err = json.NewDecoder(req.Body).Decode(chunkRequest)
+type ApiServer struct {
+	config        *ApiConfig
+	mixcoinServer *mixcoin.Server
+}
 
+func New(config *ApiConfig) (*ApiServer, error) {
+	mixcoinConfig := &mixcoin.ServerConfig{
+		RpcAddress:       config.walletAddress,
+		RpcUser:          config.user,
+		RpcPass:          config.pass,
+		MinConfirmations: 6,
+		ChunkSize:        2,
+	}
+
+	mixcoinServer, err := mixcoin.NewServer(mixcoinConfig)
+
+	if err != nil {
+		panic("unable to create mixcoin server")
+	}
+
+	server := &ApiServer{
+		config:        config,
+		mixcoinServer: mixcoinServer,
+	}
+
+	return server, nil
+}
+
+func (self *ApiServer) Serve() {
+	http.HandleFunc("/chunk", self.handleChunkRequest)
+	fmt.Println("listening on ", self.config.apiPort)
+	port := fmt.Sprintf(":%d", self.config.apiPort)
+	log.Fatal(http.ListenAndServe(port, nil))
+}
+
+func (self *ApiServer) handleChunkRequest(rw http.ResponseWriter, req *http.Request) {
+	decoder := json.NewDecoder(req.Body)
+	var chunk mixcoin.ChunkRequest
+	err := decoder.Decode(&chunk)
+	if err != nil {
+		fmt.Println("err", err)
+	}
+	fmt.Println(&chunk)
+
+	//chunkRes =
 }
 
 func main() {
-	mixcoinServer := mixcoin.NewServer(opts)
-	http.HandleFunc("/chunk", mixcoinServer.handleChunkRequest)
-	log.Fatal(http.ListenAndServe(":8082", nil))
+	config := &ApiConfig{
+		user:          "lightlike",
+		pass:          "Thereisnone",
+		walletAddress: "localhost:18554",
+		apiPort:       8082,
+	}
+	server, err := New(config)
+	if err != nil {
+		panic("unable to create api server")
+	}
+	server.Serve()
 }
