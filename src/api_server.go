@@ -27,6 +27,8 @@ func New(config *ApiConfig) (*ApiServer, error) {
 		RpcPass:          config.pass,
 		MinConfirmations: 6,
 		ChunkSize:        2,
+		PrivRingFile:     "/Users/cguo/.gnupg/secring.gpg",
+		Passphrase:       "Thereis1",
 	}
 
 	mixcoinServer, err := mixcoin.NewServer(mixcoinConfig)
@@ -57,9 +59,13 @@ func (self *ApiServer) handleChunkRequest(rw http.ResponseWriter, req *http.Requ
 	if err != nil {
 		fmt.Println("err", err)
 	}
-	fmt.Println(&chunk)
 
-	//chunkRes =
+	chunkRes, err := self.mixcoinServer.HandleChunkRequest(&chunk)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	fmt.Println(chunkRes)
 }
 
 func main() {
