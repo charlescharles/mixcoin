@@ -6,12 +6,17 @@ This is an implementation of the Mixcoin protocol (Bonneau, Narayanan, Miller, C
 
 Download golang
 
-`go install btcd`
-`go install btcwallet`
+```
+go install btcd
 
-`btcd -u username -P password --simnet`
-`btcwallet -u username -P password --rpccert ~/path/to/cert.crt --rpckey ~/path/to/key/csr --simnet`
-`go run api_server.go`
+go install btcwallet
+
+btcd -u username -P password --simnet
+
+btcwallet -u username -P password --rpccert ~/path/to/cert.crt --rpckey ~/path/to/key/csr --simnet
+
+go run api_server.go
+```
 
 # Documentation
 
