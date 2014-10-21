@@ -25,6 +25,8 @@ type chunk struct {
 	fee      int
 	nonce    int
 	confirm  int
+
+	txInfo btcjson.TransactionInput
 }
 
 type chunkTable struct {
@@ -108,6 +110,7 @@ func NewServer(config *ServerConfig) (*Server, error) {
 
 	ntfnHandlers := btcrpcclient.NotificationHandlers{
 		OnBlockConnected: server.onNewBlock,
+		OnRecvTx:         server.onReceivedTx,
 		OnBlockDisconnected: func(hash *btcwire.ShaHash, height int32) {
 			log.Printf("Block disconnected: %v (%d)", hash, height)
 		},
@@ -205,13 +208,47 @@ func (self *Server) registerAddress(encodedAddr string) error {
 	self.rpc.NotifyReceived([]*btcutil.Address{addr})
 }
 
-func (self *Server) onNewBlock(hash *btcwire.ShaHash, height int32) {
+func (self *Server) onReceivedTx(tx *btcutil.Tx, details *btcws.BlockDetails) {
+	blockHash := details.Hash
+}
+
+func (self *Server) extractReceivedVouts(tx *btcjson.TxRawResult) map[string]*btcjson.Vout, error {
+	ret = make(map[string]*btcjson.Vout)
+
+	for voutIndex, vout := range tx.Vout {
+		lockScript := vout.ScriptPubKey
+		if vout.Value >= self.config.ChunkSize &&
+			lockScript.type == "scriptpubkey" &&
+			len(lockScript.addresses == 1) && lockScript.addresses[0] == "one of the receivable addresses" {
+				ret[lockScript.addresses[0].EncodeAddress()] = vout
+			}
+	}
+
+	return ret, nil
+}
+
+func (self *Server) onNewBlock(blockHash *btcwire.ShaHash, height int32) {
 	minConf := self.config.MinConfirmations
 	stdChunkSize := self.config.ChunkSize
+
+	blockVerbose, err := self.rpc.GetBlockVerbose(blockHash, true)
+
+	for x, rawTx := range blockVerbose.RawTx {
+		for voutIndex, vout := range rawTx.Vout {
+			if vout.Value >= stdChunkSize && len()
+		}
+	}
 
 	for encodedAddr, chunk := range self.chunks.receivable {
 		addr := btcutil.DecodeAddress(encod, self.config.NetParams)
 		amount, err := self.rpc.GetReceivedByAddressMinConf(addr, minConf)
+		if err != nil {
+			return err
+		}
+		account, err := self.rpc.GetAccount(addr)
+		if err != nil {
+			return err
+		}
 		// TODO check that the time is before receivedBy
 		if amount >= stdChunkSize {
 			// check random beacon to see if we should retain as fee
