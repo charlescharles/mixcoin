@@ -1,20 +1,19 @@
 package mixcoin
 
 import (
-	//"btcec"
+	"btcnet"
 	"btcrpcclient"
 	"btcutil"
-	"log"
-	//"net"
 	"btcwire"
-	"fmt"
-
-	"io/ioutil"
+	"btcws"
 
 	"bytes"
 	"code.google.com/p/go.crypto/openpgp"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
+	"io/ioutil"
+	"log"
 	"os"
 )
 
@@ -53,6 +52,8 @@ type ServerConfig struct {
 	PrivRingFile string
 	// password for privring
 	Passphrase string
+
+	NetParams *btcnet.Params
 }
 
 func NewChunkTable() *chunkTable {
@@ -71,14 +72,6 @@ type Server struct {
 }
 
 func NewServer(config *ServerConfig) (*Server, error) {
-	ntfnHandlers := btcrpcclient.NotificationHandlers{
-		OnBlockConnected: func(hash *btcwire.ShaHash, height int32) {
-			log.Printf("Block connected: %v (%d)", hash, height)
-		},
-		OnBlockDisconnected: func(hash *btcwire.ShaHash, height int32) {
-			log.Printf("Block disconnected: %v (%d)", hash, height)
-		},
-	}
 
 	//btcdHomeDir := btcutil.AppDataDir("btcd", false)
 	certs, err := ioutil.ReadFile("/Users/cguo/server.crt")
@@ -112,6 +105,14 @@ func NewServer(config *ServerConfig) (*Server, error) {
 		chunks: NewChunkTable(),
 		rpc:    client,
 	}
+
+	ntfnHandlers := btcrpcclient.NotificationHandlers{
+		OnBlockConnected: server.onNewBlock,
+		OnBlockDisconnected: func(hash *btcwire.ShaHash, height int32) {
+			log.Printf("Block disconnected: %v (%d)", hash, height)
+		},
+	}
+
 	return server, nil
 }
 
@@ -127,13 +128,14 @@ func (self *Server) HandleChunkRequest(chunkReq *ChunkRequest) (*ChunkRequest, e
 
 	chunkReq.EscrowAddr = encodedAddr
 
-	err := self.signChunk(chunkReq)
+	err = self.signChunk(chunkReq)
 	if err != nil {
 		fmt.Println(err)
 		panic(err)
 	}
 
 	self.registerNewChunk(encodedAddr, chunkReq)
+	self.registerAddress(encodedAddr)
 
 	return chunkReq, nil
 }
@@ -191,6 +193,29 @@ func (self *Server) signChunk(chunk *ChunkRequest) error {
 	return nil
 }
 
+/*
+* TODO: ChunkRequest -> Chunk
+ */
 func (self *Server) registerNewChunk(encodedAddr string, chunk *ChunkRequest) error {
-	self.chunks.receivable[encodedAddr] = chunk
+	return nil
+}
+
+func (self *Server) registerAddress(encodedAddr string) error {
+	addr, err := btcutil.DecodeAddress(encodedAddr, self.config.NetParams)
+	self.rpc.NotifyReceived([]*btcutil.Address{addr})
+}
+
+func (self *Server) onNewBlock(hash *btcwire.ShaHash, height int32) {
+	minConf := self.config.MinConfirmations
+	stdChunkSize := self.config.ChunkSize
+
+	for encodedAddr, chunk := range self.chunks.receivable {
+		addr := btcutil.DecodeAddress(encod, self.config.NetParams)
+		amount, err := self.rpc.GetReceivedByAddressMinConf(addr, minConf)
+		// TODO check that the time is before receivedBy
+		if amount >= stdChunkSize {
+			// check random beacon to see if we should retain as fee
+			// move chunk from receivable into pool
+		}
+	}
 }

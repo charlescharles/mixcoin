@@ -1,6 +1,17 @@
-# Mixcoin-JS
+# Mixcoin
 
 This is an implementation of the Mixcoin protocol (Bonneau, Narayanan, Miller, Clark, Kroll, Felten 2014). [link to paper](https://eprint.iacr.org/2014/077.pdf)
+
+# How to run it
+
+Download golang
+
+`go install btcd`
+`go install btcwallet`
+
+`btcd -u username -P password --simnet`
+`btcwallet -u username -P password --rpccert ~/path/to/cert.crt --rpckey ~/path/to/key/csr --simnet`
+`go run api_server.go`
 
 # Documentation
 

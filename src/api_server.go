@@ -1,10 +1,11 @@
 package main
 
 import (
+	"btcnet"
 	"encoding/json"
 	"fmt"
 	"log"
-	mixcoin "mixcoin"
+	"mixcoin"
 	"net/http"
 )
 
@@ -29,6 +30,7 @@ func New(config *ApiConfig) (*ApiServer, error) {
 		ChunkSize:        2,
 		PrivRingFile:     "/Users/cguo/.gnupg/secring.gpg",
 		Passphrase:       "Thereis1",
+		NetParams:        btcnet.SimNetParams,
 	}
 
 	mixcoinServer, err := mixcoin.NewServer(mixcoinConfig)
