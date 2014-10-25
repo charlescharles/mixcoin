@@ -5,20 +5,22 @@ import (
 	"fmt"
 )
 
-type ChunkRequest struct {
-	Val      int
-	SendBy   int
-	ReturnBy int
-	OutAddr  string
-	Fee      int
-	Nonce    int
-	Confirm  int
+type Chunk struct {
+	Val      int    `json:"val"`
+	SendBy   int    `json:"sendBy"`
+	ReturnBy int    `json:"returnBy"`
+	OutAddr  string `json:"outAddr"`
+	Fee      int    `json:"fee"`
+	Nonce    int    `json:"nonce"`
+	Confirm  int    `json:"confirm"`
 
-	EscrowAddr string
-	Warrant    string
+	MixAddr string `json:"mixAddr"`
+	Warrant string `json:"warrant"`
+
+	TxOut *TxOutInfo
 }
 
-func (chunk *ChunkRequest) String() string {
+func (chunk *Chunk) String() string {
 	var buffer bytes.Buffer
 	buffer.WriteString("\n-------------\n")
 
