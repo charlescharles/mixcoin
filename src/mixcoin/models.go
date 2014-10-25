@@ -17,7 +17,7 @@ type Chunk struct {
 	MixAddr string `json:"mixAddr"`
 	Warrant string `json:"warrant"`
 
-	TxOut *TxOutInfo
+	TxInfo *TxInfo
 }
 
 func (chunk *Chunk) String() string {
@@ -31,9 +31,9 @@ func (chunk *Chunk) String() string {
     outAddr: %sfee: %d
     nonce: %d
     confirm: %d
-    escrowAddr: %s
+    mixAddr: %s
     warrant: %s`,
-		chunk.Val, chunk.SendBy, chunk.ReturnBy, chunk.OutAddr, chunk.Fee, chunk.Nonce, chunk.Confirm, chunk.EscrowAddr, chunk.Warrant))
+		chunk.Val, chunk.SendBy, chunk.ReturnBy, chunk.OutAddr, chunk.Fee, chunk.Nonce, chunk.Confirm, chunk.MixAddr, chunk.Warrant))
 
 	buffer.WriteString("\n-------------\n")
 

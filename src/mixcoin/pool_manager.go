@@ -17,15 +17,15 @@ const (
 )
 
 type Pool struct {
-	mutex  sync.RWMutex
-	lookup map[string]*Chunk
+	mutex    sync.RWMutex
+	chunkMap map[string]*Chunk
 }
 
 func (pool *Pool) Add(addr string, chunk *Chunk) error {
 	pool.mutex.Lock()
 	defer pool.mutex.Unlock()
 
-	pool.lookup[addr] = chunk
+	pool.chunkMap[addr] = chunk
 	return nil
 }
 
@@ -33,7 +33,7 @@ func (pool *Pool) Remove(addr string) (*Chunk, error) {
 	pool.mutex.Lock()
 	defer pool.mutex.Unlock()
 
-	chunk, exists := pool.lookup[addr]
+	chunk, exists := pool.chunkMap[addr]
 	if !exists {
 		return nil, Error("chunk at address ", addr, " doesn't exist")
 	}
@@ -47,7 +47,7 @@ func (pool *Pool) Get(addr string) (*Chunk, error) {
 	pool.mutex.RLock()
 	defer pool.mutex.RUnlock()
 
-	chunk, exists := pool.lookup[addr]
+	chunk, exists := pool.chunkMap[addr]
 	if !exists {
 		return nil, Error("chunk at address ", addr, " doesn't exist")
 	}
@@ -105,12 +105,12 @@ func MoveChunk(addr string, source, dest PoolType) error {
 	defer sourcePool.mutex.Unlock()
 	defer destPool.mutex.Unlock()
 
-	chunk, exists = sourcePool.lookup[addr]
+	chunk, exists = sourcePool.chunkMap[addr]
 	if !exists {
 		return Error("chunk at address ", addr, " doesn't exist")
 	}
-	destPool.lookup[addr] = chunk
-	delete(sourcePool.lookup, addr)
+	destPool.chunkMap[addr] = chunk
+	delete(sourcePool.chunkMap, addr)
 }
 
 /**

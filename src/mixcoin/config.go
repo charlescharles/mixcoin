@@ -12,12 +12,15 @@ import (
 )
 
 type Config struct {
-	RpcAddress string         // host:port for btcwallet instance
-	RpcUser    string         // username for btcwallet instance
-	RpcPass    string         // password for btcwallet instance
-	CertFile   string         // path to server cert file
-	NetParams  *btcnet.Params // network type: simnet, mainnet, etc.
-	ApiPort    int            // port to listen on for /chunk requests
+	RpcAddress string // host:port for btcwallet instance
+	RpcUser    string // username for btcwallet instance
+	RpcPass    string // password for btcwallet instance
+	CertFile   string // path to server cert file
+	MixAccount string // name for account containing mix addresses
+	WalletPass string // wallet passphrase
+
+	NetParams *btcnet.Params // network type: simnet, mainnet, etc.
+	ApiPort   int            // port to listen on for /chunk requests
 
 	MinConfirmations int // min confirmations we require
 	ChunkSize        int // standard chunk size, satoshis
@@ -33,8 +36,11 @@ func GetConfig() *Config {
 var defaultConfig = Config{
 	"127.0.0.1:18554",
 	"mixcoin",
-	"mixcoin",
+	"Mixcoin1",
 	os.Getenv("HOME") + "/.mixcoin/server.crt",
+	"mixcoin",
+	"Mixcoin1",
+
 	btcnet.SimNetParams,
 	8082,
 

@@ -17,6 +17,10 @@ import (
 	"os"
 )
 
+const (
+	MAX_CONF = 9999
+)
+
 var (
 	rpcClient *btcrpcclient.Client
 )
@@ -65,7 +69,7 @@ func handleChunkRequest(chunk *Chunk) (*Chunk, error) {
 
 	encodedAddr := (*addr).EncodeAddress()
 
-	chunk.EscrowAddr = encodedAddr
+	chunk.MixAddr = encodedAddr
 
 	err = signChunk(chunk)
 	if err != nil {
@@ -79,11 +83,18 @@ func handleChunkRequest(chunk *Chunk) (*Chunk, error) {
 }
 
 func getNewAddress() (*btcutil.Address, error) {
+	cfg := GetConfig()
+
 	addr, err := rpcClient.GetNewAddress()
 	if err != nil {
-		rpcClient.CreateEncryptedWallet("Thereis1")
+		rpcClient.CreateEncryptedWallet(cfg.WalletPass)
+		addr, err = rpcClient.GetNewAddress()
 	}
-	addr, err = rpcClient.GetNewAddress()
+	if err != nil {
+		log.Panicf(err)
+		return nil, err
+	}
+	err = rpcClient.SetAccount(addr, cfg.MixAccount)
 	if err != nil {
 		log.Panicf(err)
 		return nil, err
@@ -125,36 +136,72 @@ func extractReceivedVouts(tx *btcjson.TxRawResult) (map[string]*btcjson.Vout, er
 	return ret, nil
 }
 
-func onNewBlock(blockHash *btcwire.ShaHash, height int32) {
-	cfg := GetConfig()
+func pruneExpiredChunks() ([]string, error) {
+	poolManager.Receivable.mutex.Lock()
+	defer poolManager.Receivable.mutex.Unlock()
 
+	addrs := make([]string)
+
+	for addr, chunk := range poolManager.Receivable.chunkMap {
+		if isChunkExpired(chunk) {
+			delete(poolManager.Receivable.chunkMap, addr)
+		} else {
+			addrs = append(addrs, addr)
+		}
+	}
+
+	return addrs, nil
+}
+
+func isChunkExpired(chunk *Chunk) bool {
+	return false
+}
+
+func onNewBlock(blockHash *btcwire.ShaHash, height int32) {
+	receivableAddrs, err := pruneExpiredChunks()
+	if err != nil {
+		log.Panicln("error pruning expired chunks: ", err)
+	}
+
+	cfg := GetConfig()
 	minConf := cfg.MinConfirmations
 	stdChunkSize := cfg.ChunkSize
 
-	blockVerbose, err := rpcClient.GetBlockVerbose(blockHash, true)
-
-	// for x, rawTx := range blockVerbose.RawTx {
-	// 	for voutIndex, vout := range rawTx.Vout {
-	// 		if vout.Value >= stdChunkSize && len()
-	// 	}
-	// }
-
-	for encodedAddr, chunk := range poolManager.Receivable.lookup {
-		addr := decodeAddress(encodedAddr)
-		amount, err := rpcClient.GetReceivedByAddressMinConf(addr, minConf)
-		if err != nil {
-			return err
-		}
-		account, err := rpcClient.GetAccount(addr)
-		if err != nil {
-			return err
-		}
-		// TODO check that the time is before receivedBy
-		if amount >= stdChunkSize {
-			// check random beacon to see if we should retain as fee
-			// move chunk from receivable into pool
-		}
+	receivedByAddress, err := rpcClient.ListUnspentMinMaxAddresses(minConf, MAX_CONF, receivableAddrs)
+	if err != nil {
+		log.Panicf("error listing unspent by address: ", err)
 	}
+
+	receivePool := poolManager.Receivable
+	receivedChunkAddrs := make([]string)
+
+	for _, result := range receivedByAddress {
+		addr := result.Address
+
+		receivePool.mutex.Lock()
+		outpoints := receivePool.chunkMap[addr].TxInfo.txOuts
+
+		receivePool.chunkMap[addr].TxInfo.receivedAmount += result.Amount
+
+		txHash := btcwire.NewShaHashFromStr(result.TxId)
+
+		outpoints = append(outpoints, &btcwire.Outpoint{
+			txHash,
+			result.Vout,
+		})
+
+		receivedChunkAddrs = append(receivedChunkAddrs, addr)
+		receivePool.mutex.Unlock()
+	}
+}
+
+func isValidReceivedResult(result *btcjson.ListUnspentResult) bool {
+	cfg := GetConfig()
+
+	hasConfirmations := result.Confirmations >= cfg.MinConfirmations
+	hasAmount := result.Amount >= cfg.ChunkSize
+
+	return hasConfirmations && hasAmount
 }
 
 func handleReceivedChunk(addr string, txOutInfo *TxOutInfo) error {
