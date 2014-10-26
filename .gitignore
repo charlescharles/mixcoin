@@ -8,6 +8,7 @@ _obj
 _test
 pkg
 src/github.com
+src/tags
 bin
 
 # Architecture specific extensions/prefixes

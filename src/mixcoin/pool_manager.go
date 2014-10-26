@@ -16,126 +16,43 @@ const (
 	Retained
 )
 
-type Pool struct {
-	mutex    sync.RWMutex
-	chunkMap map[string]*Chunk
+type NewChunk struct {
+	addr  string
+	chunk *Chunk
 }
 
-func (pool *Pool) Add(addr string, chunk *Chunk) error {
-	pool.mutex.Lock()
-	defer pool.mutex.Unlock()
-
-	pool.chunkMap[addr] = chunk
-	return nil
-}
-
-func (pool *Pool) Remove(addr string) (*Chunk, error) {
-	pool.mutex.Lock()
-	defer pool.mutex.Unlock()
-
-	chunk, exists := pool.chunkMap[addr]
-	if !exists {
-		return nil, Error("chunk at address ", addr, " doesn't exist")
-	}
-
-	delete(pool, addr)
-
-	return chunk, nil
-}
-
-func (pool *Pool) Get(addr string) (*Chunk, error) {
-	pool.mutex.RLock()
-	defer pool.mutex.RUnlock()
-
-	chunk, exists := pool.chunkMap[addr]
-	if !exists {
-		return nil, Error("chunk at address ", addr, " doesn't exist")
-	}
-	return chunk, nil
-}
-
-type PoolManager struct {
-	Receivable *Pool
-	Mixing     *Pool
-	Retained   *Pool
-
-	AddrToType           map[string]PoolType
-	MixingChunkAddresses []string
+type ReceivedChunk struct {
+	addr   string
+	txInfo *TxInfo
 }
 
 var (
-	poolManager PoolManager
-	poolForType map[PoolType]*Pool
+	pool           map[string]*Chunk
+	newChunkC      chan *NewChunk
+	receivedChunkC chan *ReceivedChunk
+	mixingAddrs    []string
 )
 
-func init() {
-	poolManager = PoolManager{}
+func StartPoolManager() {
+	pool = make(map[string]*Chunk)
+	newChunkC = make(chan *NewChunk)
+	receivedChunkC = make(chan *ReceivedChunk)
+	mixingAddrs = make([]string)
 
-	poolForType = map[PoolType]*Pool{
-		Receivable: poolManager.Receivable,
-		Mixing:     poolManager.Mixing,
-		Retained:   poolManager.Retained,
-	}
+	go managePool()
 }
 
-/**
-* Atomically add a chunk to this pool
- */
-func AddChunk(addr string, chunk *Chunk, poolType PoolType) error {
-	pool := poolForType[poolType]
-	return pool.Add(addr, chunk)
-}
-
-/**
-* Atomically move chunk
- */
-func MoveChunk(addr string, source, dest PoolType) error {
-	sourcePool, err := poolForType[source]
-	if err != nil {
-		return err
+func managePool() {
+	for {
+		select {
+		case newChunk := <-newChunkC:
+			ch := Chunk{}
+			ch.ChunkMessage = newChunk.chunk
+			pool[newChunk.addr] = ch
+		case receivedChunk := <-receivedChunkC:
+			pool[receivedChunk.addr].txInfo = receivedChunk.txInfo
+			pool[receivedChunk.addr].status = Mixing
+			mixingAddrs = append(mixingAddrs, receivedChunk.addr)
+		}
 	}
-
-	destPool, err := poolForType[dest]
-	if err != nil {
-		return err
-	}
-
-	sourcePool.mutex.Lock()
-	destPool.mutex.Lock()
-	defer sourcePool.mutex.Unlock()
-	defer destPool.mutex.Unlock()
-
-	chunk, exists = sourcePool.chunkMap[addr]
-	if !exists {
-		return Error("chunk at address ", addr, " doesn't exist")
-	}
-	destPool.chunkMap[addr] = chunk
-	delete(sourcePool.chunkMap, addr)
-}
-
-/**
-* Atomically remove and return chunk with given address and pool
- */
-func PopChunk(addr string, poolType PoolType) (*Chunk, error) {
-	pool := poolForType[poolType]
-	chunk, err := pool.Remove(addr)
-	if err != nil {
-		return nil, err
-	}
-
-	return chunk, nil
-}
-
-/**
-* Atomically remove and return a random chunk in mixing pool
- */
-func PopRandomMixingChunk() (*Chunk, error) {
-	mixingAddressCount := len(poolManager.mixingChunkAddresses)
-	randAddress := poolManager.mixingChunkAddresses[rand.Intn(mixingAddressCount)]
-	chunk, err := PopChunk(randAddress, Mixing)
-	if err != nil {
-		panic(err)
-	}
-
-	return chunk, nil
 }
