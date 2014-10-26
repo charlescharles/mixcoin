@@ -22,8 +22,8 @@ type Config struct {
 	NetParams *btcnet.Params // network type: simnet, mainnet, etc.
 	ApiPort   int            // port to listen on for /chunk requests
 
-	MinConfirmations int // min confirmations we require
-	ChunkSize        int // standard chunk size, satoshis
+	MinConfirmations int   // min confirmations we require
+	ChunkSize        int64 // standard chunk size, satoshis
 
 	PrivRingFile string // path to privring
 	Passphrase   string // password for privring

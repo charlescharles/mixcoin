@@ -6,6 +6,12 @@ import (
 )
 
 type Chunk struct {
+	status  PoolType
+	message ChunkMessage
+	txInfo  *TxInfo
+}
+
+type ChunkMessage struct {
 	Val      int    `json:"val"`
 	SendBy   int    `json:"sendBy"`
 	ReturnBy int    `json:"returnBy"`
@@ -16,8 +22,6 @@ type Chunk struct {
 
 	MixAddr string `json:"mixAddr"`
 	Warrant string `json:"warrant"`
-
-	TxInfo *TxInfo
 }
 
 func (chunk *Chunk) String() string {

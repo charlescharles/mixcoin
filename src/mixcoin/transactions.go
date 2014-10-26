@@ -28,5 +28,17 @@ func sendChunk(chunk *Chunk, dest string) error {
 	txOut, err := btcwire.NewTxOut(chunk.TxInfo.receivedAmount, pkScript)
 	tx.AddTxOut(txOut)
 
-	return nil
+	tx, signed, err := rpcClient.SignRawTransaction(tx)
+	if !signed || err != nil {
+		log.Panicf("error signing input transactions: ", err)
+		return err
+	}
+
+	// allow high fees?
+	txHash, err = rpcClient.SendRawTransaction(tx, true)
+
+	if err != nil {
+		log.Panicf("error sending transaction: ", err)
+		return err
+	}
 }
