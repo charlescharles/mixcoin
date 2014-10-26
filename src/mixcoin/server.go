@@ -57,6 +57,8 @@ func StartMixcoinServer() {
 	if err = client.NotifyBlocks(); err != nil {
 		log.Panicf(err)
 	}
+
+	StartPoolManager()
 }
 
 func handleChunkRequest(chunk *Chunk) (*Chunk, error) {
