@@ -3,7 +3,6 @@ package mixcoin
 import (
 	"btcnet"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -22,8 +21,8 @@ type Config struct {
 	NetParams *btcnet.Params // network type: simnet, mainnet, etc.
 	ApiPort   int            // port to listen on for /chunk requests
 
-	MinConfirmations int   // min confirmations we require
-	ChunkSize        int64 // standard chunk size, satoshis
+	MinConfirmations int64   // min confirmations we require
+	ChunkSize        float64 // standard chunk size, satoshis
 
 	PrivRingFile string // path to privring
 	Passphrase   string // password for privring
@@ -41,7 +40,7 @@ var defaultConfig = Config{
 	"mixcoin",
 	"Mixcoin1",
 
-	btcnet.SimNetParams,
+	&btcnet.SimNetParams,
 	8082,
 
 	6,

@@ -1,20 +1,19 @@
 package mixcoin
 
 import (
+	"log"
 	"time"
 )
 
-func mix(chunk *Chunk) {
-	delay := generateDelay(chunk.ReturnBy)
-	outAddr := chunk.OutAddr
-	time.Sleep(delay * time.Second)
+func mix(delay int, outAddr string) {
+	// TODO: delay * time.Second
+	time.Sleep(time.Second)
 
-	outputChunk, err := PopRandomMixingChunk()
-	if err != nil {
-		log.Panicf("error popping random mixing chunk: ", err)
-		return
-	}
-	err = sendChunk(outputChunk, outAddr)
+	requestMixingChunkC <- true
+	var outputChunk *Chunk
+	outputChunk = <-randMixingChunkC
+
+	err := sendChunk(outputChunk, outAddr)
 	if err != nil {
 		log.Panicf("error sending chunk: ", err)
 	}

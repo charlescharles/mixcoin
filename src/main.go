@@ -1,7 +1,7 @@
 package main
 
 import (
-	"mixcoin"
+	"./mixcoin"
 )
 
 func main() {

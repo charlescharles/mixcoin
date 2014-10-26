@@ -9,6 +9,8 @@ _test
 pkg
 src/github.com
 src/tags
+src/mixcoin/tags
+tags
 bin
 
 # Architecture specific extensions/prefixes

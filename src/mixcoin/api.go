@@ -1,7 +1,6 @@
 package mixcoin
 
 import (
-	"btcnet"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -18,21 +17,22 @@ func StartApiServer() {
 
 func apiHandleChunkRequest(rw http.ResponseWriter, req *http.Request) {
 	decoder := json.NewDecoder(req.Body)
-	var chunk Chunk
-	err := decoder.Decode(&chunk)
+	var chunkMsg ChunkMessage
+	err := decoder.Decode(&chunkMsg)
 	if err != nil {
 		log.Panicf("error decoding chunk: ", err)
+		return
 	}
 
-	chunkRes, err := handleChunkRequest(&chunk)
+	err = handleChunkRequest(&chunkMsg)
 	if err != nil {
 		log.Panicf("error handling chunk request: ", err)
 		rw.WriteHeader(500)
 		return
 	}
 
-	log.Println(chunkRes)
-	json, err := json.Marshal(chunkRes)
+	log.Println(chunkMsg)
+	json, err := json.Marshal(chunkMsg)
 	if err != nil {
 		fmt.Println(err)
 		rw.WriteHeader(500)

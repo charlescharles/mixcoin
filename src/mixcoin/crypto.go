@@ -5,21 +5,22 @@ import (
 	"code.google.com/p/go.crypto/openpgp"
 	"encoding/base64"
 	"encoding/json"
-	"ioutil"
+	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
 )
 
-func signChunk(chunk *Chunk) error {
-	log.Printf("signing chunk")
-	marshaledBytes, _ := json.Marshal(chunk)
+func signChunkMessage(chunkMsg *ChunkMessage) error {
+	log.Printf("signing chunk message")
+	marshaledBytes, _ := json.Marshal(chunkMsg)
 	marshaledBuf := bytes.NewBuffer(marshaledBytes)
 
-	cfg = GetConfig()
+	cfg := GetConfig()
 
 	keyringFileBuffer, err := os.Open(cfg.PrivRingFile)
 	if err != nil {
-		log.Panicf(err)
+		log.Panicf("error opening privring file")
 		return err
 	}
 
@@ -49,7 +50,7 @@ func signChunk(chunk *Chunk) error {
 	}
 	armoredSig := base64.StdEncoding.EncodeToString(armoredSigEnc)
 
-	chunk.Warrant = armoredSig
+	chunkMsg.Warrant = armoredSig
 
 	return nil
 }

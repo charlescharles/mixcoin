@@ -4,13 +4,13 @@ import (
 	"btcutil"
 )
 
-func decodeAddress(encoded string) (*btcutil.Address, error) {
+func decodeAddress(encoded string) (btcutil.Address, error) {
 	cfg := GetConfig()
-	addr, err := btcutil.DecodeAddress(encodedAddr, self.config.NetParams)
+	addr, err := btcutil.DecodeAddress(encoded, cfg.NetParams)
 
 	if err != nil {
 		return nil, err
 	}
 
-	return addr
+	return addr, nil
 }

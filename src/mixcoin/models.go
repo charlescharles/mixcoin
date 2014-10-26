@@ -7,24 +7,24 @@ import (
 
 type Chunk struct {
 	status  PoolType
-	message ChunkMessage
+	message *ChunkMessage
 	txInfo  *TxInfo
 }
 
 type ChunkMessage struct {
-	Val      int    `json:"val"`
-	SendBy   int    `json:"sendBy"`
-	ReturnBy int    `json:"returnBy"`
-	OutAddr  string `json:"outAddr"`
-	Fee      int    `json:"fee"`
-	Nonce    int    `json:"nonce"`
-	Confirm  int    `json:"confirm"`
+	Val      float64 `json:"val"`
+	SendBy   int     `json:"sendBy"`
+	ReturnBy int     `json:"returnBy"`
+	OutAddr  string  `json:"outAddr"`
+	Fee      int     `json:"fee"`
+	Nonce    int     `json:"nonce"`
+	Confirm  int     `json:"confirm"`
 
 	MixAddr string `json:"mixAddr"`
 	Warrant string `json:"warrant"`
 }
 
-func (chunk *Chunk) String() string {
+func (chunkMsg *ChunkMessage) String() string {
 	var buffer bytes.Buffer
 	buffer.WriteString("\n-------------\n")
 
@@ -37,7 +37,7 @@ func (chunk *Chunk) String() string {
     confirm: %d
     mixAddr: %s
     warrant: %s`,
-		chunk.Val, chunk.SendBy, chunk.ReturnBy, chunk.OutAddr, chunk.Fee, chunk.Nonce, chunk.Confirm, chunk.MixAddr, chunk.Warrant))
+		chunkMsg.Val, chunkMsg.SendBy, chunkMsg.ReturnBy, chunkMsg.OutAddr, chunkMsg.Fee, chunkMsg.Nonce, chunkMsg.Confirm, chunkMsg.MixAddr, chunkMsg.Warrant))
 
 	buffer.WriteString("\n-------------\n")
 
