@@ -8,6 +8,7 @@ _obj
 _test
 pkg
 src/github.com
+src/code.google.com
 src/tags
 src/mixcoin/tags
 tags

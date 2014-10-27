@@ -28,7 +28,7 @@ func handleChunkRequest(chunkMsg *ChunkMessage) error {
 
 	addr, err := getNewAddress()
 	if err != nil {
-		log.Panicf("Unable to create new address")
+		log.Panicf("Unable to create new address: %v", err)
 		return err
 	}
 
@@ -38,7 +38,7 @@ func handleChunkRequest(chunkMsg *ChunkMessage) error {
 
 	err = signChunkMessage(chunkMsg)
 	if err != nil {
-		log.Panicf("Couldn't sign chunk")
+		log.Panicf("Couldn't sign chunk: %v", err)
 		return err
 	}
 
@@ -74,7 +74,7 @@ func onNewBlock(blockHash *btcwire.ShaHash, height int32) {
 		if chunk.status == Receivable {
 			decoded, err := decodeAddress(addr)
 			if err != nil {
-				log.Panicln("unable to decode address")
+				log.Panicf("unable to decode address: %v", err)
 			}
 			receivableAddrs = append(receivableAddrs, decoded)
 		}
@@ -82,7 +82,7 @@ func onNewBlock(blockHash *btcwire.ShaHash, height int32) {
 
 	receivedByAddress, err := rpcClient.ListUnspentMinMaxAddresses(minConf, MAX_CONF, receivableAddrs)
 	if err != nil {
-		log.Panicf("error listing unspent by address: ", err)
+		log.Panicf("error listing unspent by address: %v", err)
 	}
 	received := make(map[string]*TxInfo)
 	for _, result := range receivedByAddress {

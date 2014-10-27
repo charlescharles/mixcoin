@@ -1,9 +1,8 @@
 package mixcoin
 
-// TODO use crypto/rand
 import (
+	"crypto/rand"
 	"log"
-	"math/rand"
 	"time"
 )
 
@@ -69,7 +68,7 @@ func managePool() {
 			go mix(randDelay, outAddr)
 		case <-requestMixingChunkC:
 			// TODO remove randAddr from mixingAddrs
-			randIndex := rand.Intn(len(mixingAddrs))
+			randIndex := rand.Int(rand.Reader, len(mixingAddrs))
 			randAddr := mixingAddrs[randIndex]
 			chunk := pool[randAddr]
 			delete(pool, randAddr)
