@@ -37,7 +37,7 @@ var defaultConfig = Config{
 	RpcAddress: "127.0.0.1:18554",
 	RpcUser:    "mixcoin",
 	RpcPass:    "Mixcoin1",
-	CertFile:   os.Getenv("HOME") + "/.mixcoin/server.key",
+	CertFile:   os.Getenv("HOME") + "/.mixcoin/mixcoinCA.cer",
 	MixAccount: "mixcoin",
 	WalletPass: "Mixcoin1",
 
