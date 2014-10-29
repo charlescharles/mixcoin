@@ -10,6 +10,8 @@ import (
 var rpcClient *btcrpcclient.Client
 
 func StartRpcClient() {
+	log.Println("starting rpc client")
+
 	cfg := GetConfig()
 
 	log.Printf("Reading btcd cert file %s", cfg.CertFile)
@@ -34,20 +36,28 @@ func StartRpcClient() {
 
 	client, err := btcrpcclient.New(connCfg, &ntfnHandlers)
 	if err != nil {
-		log.Panicf("error creating rpc client")
+		log.Panicf("error creating rpc client: %v", err)
 	}
 
 	// Register for block connect and disconnect notifications.
 	if err = client.NotifyBlocks(); err != nil {
 		log.Panicf("error setting notifyblock")
 	}
+
+	log.Printf("unlocking wallet")
+
+	err = client.WalletPassphrase(cfg.WalletPass, 7200)
+	if err != nil {
+		log.Printf("error unlocking wallet: %v", err)
+	}
+	rpcClient = client
 }
 
 func getNewAddress() (*btcutil.Address, error) {
 	cfg := GetConfig()
-
 	addr, err := rpcClient.GetNewAddress()
 	if err != nil {
+		log.Printf("creating new encrypted wallet")
 		rpcClient.CreateEncryptedWallet(cfg.WalletPass)
 		addr, err = rpcClient.GetNewAddress()
 	}
@@ -55,10 +65,12 @@ func getNewAddress() (*btcutil.Address, error) {
 		log.Panicf("error getting new address")
 		return nil, err
 	}
+	/**
 	err = rpcClient.SetAccount(addr, cfg.MixAccount)
 	if err != nil {
-		log.Panicf("error setting account")
+		log.Panicf("error setting account: %v", err)
 		return nil, err
 	}
+	*/
 	return &addr, nil
 }

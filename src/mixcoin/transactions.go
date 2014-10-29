@@ -8,11 +8,11 @@ import (
 
 type TxInfo struct {
 	txOuts         []*btcwire.OutPoint
-	receivedAmount float64
+	receivedAmount int64
 }
 
 func sendChunk(chunk *Chunk, dest string) error {
-	builder := btcscript.NewScriptBuilder()
+	//builder := btcscript.NewScriptBuilder()
 	tx := btcwire.NewMsgTx()
 
 	for _, prevOut := range chunk.txInfo.txOuts {
@@ -45,5 +45,6 @@ func sendChunk(chunk *Chunk, dest string) error {
 		log.Panicf("error sending transaction: ", err)
 		return err
 	}
+	log.Printf("sent transaction with hash: %v", txHash)
 	return nil
 }

@@ -5,7 +5,6 @@ import (
 )
 
 func main() {
-	mixcoin.StartApiServer()
 	mixcoin.StartMixcoinServer()
-	a = b
+	mixcoin.StartApiServer()
 }

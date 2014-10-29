@@ -5,6 +5,7 @@ import (
 	"btcutil"
 	"btcwire"
 	"errors"
+	"fmt"
 	"log"
 )
 
@@ -13,6 +14,9 @@ const (
 )
 
 func StartMixcoinServer() {
+	log.Println("starting mixcoin server")
+	fmt.Println("starting mixcoin server")
+
 	StartRpcClient()
 	StartPoolManager()
 }
@@ -22,10 +26,11 @@ func handleChunkRequest(chunkMsg *ChunkMessage) error {
 
 	err := validateChunkMsg(chunkMsg)
 	if err != nil {
-		log.Printf("Invalid chunk request")
+		log.Printf("Invalid chunk request: %v", err)
 		return err
 	}
 
+	log.Printf("generating new address")
 	addr, err := getNewAddress()
 	if err != nil {
 		log.Panicf("Unable to create new address: %v", err)
@@ -66,7 +71,6 @@ func registerNewChunk(encodedAddr string, chunkMsg *ChunkMessage) {
 func onNewBlock(blockHash *btcwire.ShaHash, height int32) {
 	cfg := GetConfig()
 	minConf := cfg.MinConfirmations
-	stdChunkSize := cfg.ChunkSize
 
 	// TODO don't access the pool
 	var receivableAddrs []btcutil.Address
@@ -95,12 +99,16 @@ func onNewBlock(blockHash *btcwire.ShaHash, height int32) {
 		}
 
 		txHash, err := btcwire.NewShaHashFromStr(result.TxId)
+		if err != nil {
+			log.Printf("error parsing tx sha hash: %v", err)
+		}
 		outpoint := &btcwire.OutPoint{
 			*txHash,
 			result.Vout,
 		}
-
-		txInfo.receivedAmount += result.Amount
+		// result.Amount is float64
+		received, err := btcutil.NewAmount(result.Amount)
+		txInfo.receivedAmount += int64(received)
 		txInfo.txOuts = append(txInfo.txOuts, outpoint)
 
 		receivedChunkC <- &ReceivedChunk{addr, txInfo}
@@ -110,8 +118,16 @@ func onNewBlock(blockHash *btcwire.ShaHash, height int32) {
 func isValidReceivedResult(result *btcjson.ListUnspentResult) bool {
 	cfg := GetConfig()
 
-	hasConfirmations := result.Confirmations >= cfg.MinConfirmations
-	hasAmount := result.Amount >= cfg.ChunkSize
+	// ListUnspentResult.Amount is a float64 in BTC
+	// btcutil.Amount is an int64
+	amountReceived, err := btcutil.NewAmount(result.Amount)
+	if err != nil {
+		log.Printf("error parsing amount received: %v", err)
+	}
+	amountReceivedInt := int64(amountReceived)
+
+	hasConfirmations := result.Confirmations >= int64(cfg.MinConfirmations)
+	hasAmount := amountReceivedInt >= cfg.ChunkSize
 
 	return hasConfirmations && hasAmount
 }

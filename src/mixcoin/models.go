@@ -12,13 +12,13 @@ type Chunk struct {
 }
 
 type ChunkMessage struct {
-	Val      float64 `json:"val"`
-	SendBy   int     `json:"sendBy"`
-	ReturnBy int     `json:"returnBy"`
-	OutAddr  string  `json:"outAddr"`
-	Fee      int     `json:"fee"`
-	Nonce    int     `json:"nonce"`
-	Confirm  int     `json:"confirm"`
+	Val      int64  `json:"val"`
+	SendBy   int    `json:"sendBy"`
+	ReturnBy int    `json:"returnBy"`
+	OutAddr  string `json:"outAddr"`
+	Fee      int    `json:"fee"`
+	Nonce    int    `json:"nonce"`
+	Confirm  int    `json:"confirm"`
 
 	MixAddr string `json:"mixAddr"`
 	Warrant string `json:"warrant"`

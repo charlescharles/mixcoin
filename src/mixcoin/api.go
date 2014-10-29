@@ -11,8 +11,9 @@ import (
 func StartApiServer() {
 	port := GetConfig().ApiPort
 	http.HandleFunc("/chunk", apiHandleChunkRequest)
-	log.Printf("listening on ", port)
-	log.Fatal(http.ListenAndServe(strconv.Itoa(port), nil))
+	log.Printf("listening on %v", port)
+	portStr := ":" + strconv.Itoa(port)
+	log.Fatal(http.ListenAndServe(portStr, nil))
 }
 
 func apiHandleChunkRequest(rw http.ResponseWriter, req *http.Request) {

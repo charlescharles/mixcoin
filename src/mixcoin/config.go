@@ -2,6 +2,7 @@ package mixcoin
 
 import (
 	"btcnet"
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -21,8 +22,8 @@ type Config struct {
 	NetParams *btcnet.Params // network type: simnet, mainnet, etc.
 	ApiPort   int            // port to listen on for /chunk requests
 
-	MinConfirmations int64   // min confirmations we require
-	ChunkSize        float64 // standard chunk size, satoshis
+	MinConfirmations int   // min confirmations we require
+	ChunkSize        int64 // standard chunk size, satoshis
 
 	PrivRingFile string // path to privring
 	Passphrase   string // password for privring
@@ -33,21 +34,21 @@ func GetConfig() *Config {
 }
 
 var defaultConfig = Config{
-	"127.0.0.1:18554",
-	"mixcoin",
-	"Mixcoin1",
-	os.Getenv("HOME") + "/.mixcoin/server.crt",
-	"mixcoin",
-	"Mixcoin1",
+	RpcAddress: "127.0.0.1:18554",
+	RpcUser:    "mixcoin",
+	RpcPass:    "Mixcoin1",
+	CertFile:   os.Getenv("HOME") + "/.mixcoin/server.key",
+	MixAccount: "mixcoin",
+	WalletPass: "Mixcoin1",
 
-	&btcnet.SimNetParams,
-	8082,
+	NetParams: &btcnet.SimNetParams,
+	ApiPort:   8082,
 
-	6,
-	1000,
+	MinConfirmations: 6,
+	ChunkSize:        1000,
 
-	os.Getenv("HOME") + "/.mixcoin/secring.gpg",
-	"Thereis1",
+	PrivRingFile: os.Getenv("HOME") + "/.mixcoin/secring.gpg",
+	Passphrase:   "Thereis1",
 }
 
 var config Config
@@ -63,7 +64,10 @@ func init() {
 	}
 
 	config = Config{}
-	err = json.Unmarshal(configBytes, &config)
+	configBuf := bytes.NewBuffer(configBytes)
+	//err = json.Unmarshal(configBuf, &config)
+	decoder := json.NewDecoder(configBuf)
+	err = decoder.Decode(&config)
 	if err != nil {
 		log.Panicf("Invalid configuration file %s: %v", configFile, err)
 	}

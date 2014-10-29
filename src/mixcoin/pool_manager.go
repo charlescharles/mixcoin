@@ -3,6 +3,7 @@ package mixcoin
 import (
 	"crypto/rand"
 	"log"
+	"math/big"
 	"time"
 )
 
@@ -39,6 +40,8 @@ var (
 )
 
 func StartPoolManager() {
+	log.Println("starting pool manager")
+
 	pool = make(map[string]*Chunk)
 	newChunkC = make(chan *NewChunk)
 	receivedChunkC = make(chan *ReceivedChunk)
@@ -68,7 +71,13 @@ func managePool() {
 			go mix(randDelay, outAddr)
 		case <-requestMixingChunkC:
 			// TODO remove randAddr from mixingAddrs
-			randIndex := rand.Int(rand.Reader, len(mixingAddrs))
+			bigIntLen := big.NewInt(int64(len(mixingAddrs)))
+			bigRandIndex, err := rand.Int(rand.Reader, bigIntLen)
+			randIndex := int(bigRandIndex.Int64())
+			if err != nil {
+				log.Panicf("error generating random mixing index: %v", err)
+			}
+
 			randAddr := mixingAddrs[randIndex]
 			chunk := pool[randAddr]
 			delete(pool, randAddr)
