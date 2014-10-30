@@ -22,8 +22,9 @@ type Config struct {
 	NetParams *btcnet.Params // network type: simnet, mainnet, etc.
 	ApiPort   int            // port to listen on for /chunk requests
 
-	MinConfirmations int   // min confirmations we require
-	ChunkSize        int64 // standard chunk size, satoshis
+	MinConfirmations   int   // min confirmations we require
+	ChunkSize          int64 // standard chunk size, satoshis
+	MaxFutureChunkTime int   // max block height delta into the future to accept chunk contracts
 
 	PrivRingFile string // path to privring
 	Passphrase   string // password for privring
@@ -34,18 +35,19 @@ func GetConfig() *Config {
 }
 
 var defaultConfig = Config{
-	RpcAddress: "127.0.0.1:18554",
+	RpcAddress: "127.0.0.1:18332",
 	RpcUser:    "mixcoin",
 	RpcPass:    "Mixcoin1",
 	CertFile:   os.Getenv("HOME") + "/.mixcoin/mixcoinCA.cer",
 	MixAccount: "mixcoin",
 	WalletPass: "Mixcoin1",
 
-	NetParams: &btcnet.SimNetParams,
+	NetParams: &btcnet.TestNet3Params,
 	ApiPort:   8082,
 
-	MinConfirmations: 6,
-	ChunkSize:        1000,
+	MinConfirmations:   1,
+	ChunkSize:          1000,
+	MaxFutureChunkTime: 72, // a bit less than 12 hours
 
 	PrivRingFile: os.Getenv("HOME") + "/.mixcoin/secring.gpg",
 	Passphrase:   "Thereis1",
@@ -61,6 +63,8 @@ func init() {
 	if err != nil {
 		writeDefaultConfig(configFile)
 		fmt.Println("Config file written to ~/.mixcoin/config.json. Please edit and re-run.")
+		os.Exit(1)
+		return
 	}
 
 	config = Config{}

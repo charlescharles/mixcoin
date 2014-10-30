@@ -3,13 +3,24 @@ package mixcoin
 import (
 	"bytes"
 	"code.google.com/p/go.crypto/openpgp"
+	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
+	"math/big"
 	"os"
 )
+
+func randInt(int high) int {
+	bigRet, err := rand.Int(rand.Reader, big.NewInt(int64(high)))
+	if err != nil {
+		log.Panicf("error generating random int: %v", err)
+	}
+
+	return int(bigRet.Int64())
+}
 
 func signChunkMessage(chunkMsg *ChunkMessage) error {
 	log.Printf("signing chunk message")

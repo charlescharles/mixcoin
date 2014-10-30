@@ -1,9 +1,7 @@
 package mixcoin
 
 import (
-	"crypto/rand"
 	"log"
-	"math/big"
 	"time"
 )
 
@@ -59,10 +57,13 @@ func managePool() {
 	for {
 		select {
 		case newChunk := <-newChunkC:
-			log.Println("adding new chunk")
+			log.Printf("adding new chunk: %v", newChunk)
 			ch := &Chunk{Receivable, newChunk.chunkMsg, nil}
 			pool[newChunk.addr] = ch
 		case receivedChunk := <-receivedChunkC:
+			// change chunk to mixing, add txoutinfo, add chunk to mixingaddrs,
+			// mix
+			log.Printf("received chunk: %v", receivedChunk)
 			pool[receivedChunk.addr].txInfo = receivedChunk.txInfo
 			pool[receivedChunk.addr].status = Mixing
 			mixingAddrs = append(mixingAddrs, receivedChunk.addr)
@@ -70,22 +71,21 @@ func managePool() {
 			outAddr := receivedChunk.addr
 			go mix(randDelay, outAddr)
 		case <-requestMixingChunkC:
-			// TODO remove randAddr from mixingAddrs
-			bigIntLen := big.NewInt(int64(len(mixingAddrs)))
-			bigRandIndex, err := rand.Int(rand.Reader, bigIntLen)
-			randIndex := int(bigRandIndex.Int64())
-			if err != nil {
-				log.Panicf("error generating random mixing index: %v", err)
-			}
-
+			randIndex := randInt(len(mixingAddrs))
 			randAddr := mixingAddrs[randIndex]
+
 			chunk := pool[randAddr]
 			delete(pool, randAddr)
+
+			// remove from mixingAddrs
+			mixingAddrs[randIndex] = mixingAddrs[len(mixingAddrs)-1]
+			mixingAddrs = mixingAddrs[:len(mixingAddrs)-1]
+
 			randMixingChunkC <- chunk
 		case <-prune:
 			expiredAddrs := make([]string, 10)
 			for addr, chunk := range pool {
-				if isExpired(chunk) {
+				if chunk.status == Receivable && isExpired(chunk) {
 					expiredAddrs = append(expiredAddrs, addr)
 				}
 			}
@@ -97,14 +97,15 @@ func managePool() {
 }
 
 func isExpired(chunk *Chunk) bool {
-	isReceivable := chunk.status == Receivable
-	isPastExpiry := false
-	return isReceivable && isPastExpiry
+	currHeight, _ := getBlockchainHeight()
+	isPastExpiry := chunk.message.SendBy < currHeight
+
+	return isPastExpiry
 }
 
 func signalPrune() {
 	for {
-		time.Sleep(PRUNE_PERIOD * time.Second)
+		time.Sleep(time.Duration(PRUNE_PERIOD) * time.Second)
 		prune <- true
 	}
 }

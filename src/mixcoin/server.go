@@ -22,13 +22,15 @@ func StartMixcoinServer() {
 }
 
 func handleChunkRequest(chunkMsg *ChunkMessage) error {
-	log.Println("handling chunk request")
+	log.Printf("handling chunk request: %s", chunkMsg)
 
 	err := validateChunkMsg(chunkMsg)
 	if err != nil {
 		log.Printf("Invalid chunk request: %v", err)
 		return err
 	}
+
+	log.Printf("validated chunk request")
 
 	log.Printf("generating new address")
 	addr, err := getNewAddress()
@@ -38,6 +40,7 @@ func handleChunkRequest(chunkMsg *ChunkMessage) error {
 	}
 
 	encodedAddr := (*addr).EncodeAddress()
+	log.Printf("generated address: %s", encodedAddr)
 
 	chunkMsg.MixAddr = encodedAddr
 
@@ -61,6 +64,17 @@ func validateChunkMsg(chunkMsg *ChunkMessage) error {
 	if chunkMsg.Confirm < cfg.MinConfirmations {
 		return errors.New("Invalid number of confirmations")
 	}
+
+	currHeight, err := getBlockchainHeight()
+	if err != nil {
+		return err
+	}
+	if chunkMsg.SendBy-currHeight > cfg.MaxFutureChunkTime {
+		return errors.New("sendby time too far in the future")
+	}
+	if chunkMsg.SendBy <= currHeight {
+		return errors.New("sendby time has already passed")
+	}
 	return nil
 }
 
@@ -69,6 +83,7 @@ func registerNewChunk(encodedAddr string, chunkMsg *ChunkMessage) {
 }
 
 func onNewBlock(blockHash *btcwire.ShaHash, height int32) {
+	log.Printf("new block connected with hash %s, height %d", blockHash.Strin(), height)
 	cfg := GetConfig()
 	minConf := cfg.MinConfirmations
 
@@ -84,10 +99,13 @@ func onNewBlock(blockHash *btcwire.ShaHash, height int32) {
 		}
 	}
 
+	log.Printf("current receivable addresses: %v", receivableAddrs)
+
 	receivedByAddress, err := rpcClient.ListUnspentMinMaxAddresses(minConf, MAX_CONF, receivableAddrs)
 	if err != nil {
 		log.Panicf("error listing unspent by address: %v", err)
 	}
+	log.Printf("received transactions: %v", receivedByAddress)
 	received := make(map[string]*TxInfo)
 	for _, result := range receivedByAddress {
 		addr := result.Address
@@ -108,8 +126,8 @@ func onNewBlock(blockHash *btcwire.ShaHash, height int32) {
 		}
 		// result.Amount is float64
 		received, err := btcutil.NewAmount(result.Amount)
-		txInfo.receivedAmount += int64(received)
-		txInfo.txOuts = append(txInfo.txOuts, outpoint)
+		txInfo.receivedAmount = int64(received)
+		txInfo.txOut = outpoint
 
 		receivedChunkC <- &ReceivedChunk{addr, txInfo}
 	}

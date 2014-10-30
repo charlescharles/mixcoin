@@ -49,21 +49,20 @@ func StartRpcClient() {
 	err = client.WalletPassphrase(cfg.WalletPass, 7200)
 	if err != nil {
 		log.Printf("error unlocking wallet: %v", err)
+		log.Printf("trying to create a new wallet:")
+		err = client.CreateEncryptedWallet(cfg.WalletPass)
+		if err != nil {
+			log.Panicf("error creating new wallet: %v", err)
+		}
+		log.Printf("successfully created a new wallet")
 	}
 	rpcClient = client
 }
 
 func getNewAddress() (*btcutil.Address, error) {
-	cfg := GetConfig()
 	addr, err := rpcClient.GetNewAddress()
 	if err != nil {
-		log.Printf("creating new encrypted wallet")
-		rpcClient.CreateEncryptedWallet(cfg.WalletPass)
-		addr, err = rpcClient.GetNewAddress()
-	}
-	if err != nil {
-		log.Panicf("error getting new address")
-		return nil, err
+		log.Panicf("error getting new address: %v", err)
 	}
 	/**
 	err = rpcClient.SetAccount(addr, cfg.MixAccount)
@@ -73,4 +72,14 @@ func getNewAddress() (*btcutil.Address, error) {
 	}
 	*/
 	return &addr, nil
+}
+
+// TODO only update occasionally; no need to check every time
+func getBlockchainHeight() (int, error) {
+	_, height32, err := rpcClient.GetBestBlock()
+	if err != nil {
+		return -1, err
+	}
+
+	return int(height32), nil
 }
