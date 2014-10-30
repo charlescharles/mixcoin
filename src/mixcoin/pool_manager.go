@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-// how often to prune expired receivable chunks, in seconds
+// how often to prune expired receivable chunks, in minutes
 const PRUNE_PERIOD = 10
 
 type PoolType int
@@ -107,7 +107,7 @@ func isExpired(chunk *Chunk) bool {
 
 func signalPrune() {
 	for {
-		time.Sleep(time.Duration(PRUNE_PERIOD) * time.Second)
+		time.Sleep(time.Duration(PRUNE_PERIOD) * time.Minute)
 		prune <- true
 	}
 }

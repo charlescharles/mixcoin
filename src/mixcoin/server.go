@@ -24,7 +24,7 @@ func StartMixcoinServer() {
 
 func watchTransactions() {
 	for {
-		time.Sleep(time.Duration(10) * time.Minute)
+		time.Sleep(time.Duration(3) * time.Minute)
 		log.Printf("manually triggering transactions scan")
 		onNewBlock(nil, -1)
 	}
