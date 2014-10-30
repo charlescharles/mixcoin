@@ -5,8 +5,8 @@ import (
 	"btcutil"
 	"btcwire"
 	"errors"
-	"fmt"
 	"log"
+	"time"
 )
 
 const (
@@ -15,10 +15,19 @@ const (
 
 func StartMixcoinServer() {
 	log.Println("starting mixcoin server")
-	fmt.Println("starting mixcoin server")
 
 	StartRpcClient()
 	StartPoolManager()
+
+	go watchTransactions()
+}
+
+func watchTransactions() {
+	for {
+		time.Sleep(time.Duration(10) * time.Minute)
+		log.Printf("manually triggering transactions scan")
+		onNewBlock(nil, -1)
+	}
 }
 
 func handleChunkRequest(chunkMsg *ChunkMessage) error {
@@ -83,7 +92,7 @@ func registerNewChunk(encodedAddr string, chunkMsg *ChunkMessage) {
 }
 
 func onNewBlock(blockHash *btcwire.ShaHash, height int32) {
-	log.Printf("new block connected with hash %s, height %d", blockHash.String(), height)
+	log.Printf("new block connected with height %d", height)
 	cfg := GetConfig()
 	minConf := cfg.MinConfirmations
 
