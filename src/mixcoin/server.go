@@ -83,7 +83,7 @@ func registerNewChunk(encodedAddr string, chunkMsg *ChunkMessage) {
 }
 
 func onNewBlock(blockHash *btcwire.ShaHash, height int32) {
-	log.Printf("new block connected with hash %s, height %d", blockHash.Strin(), height)
+	log.Printf("new block connected with hash %s, height %d", blockHash.String(), height)
 	cfg := GetConfig()
 	minConf := cfg.MinConfirmations
 

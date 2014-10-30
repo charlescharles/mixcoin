@@ -13,7 +13,7 @@ import (
 	"os"
 )
 
-func randInt(int high) int {
+func randInt(high int) int {
 	bigRet, err := rand.Int(rand.Reader, big.NewInt(int64(high)))
 	if err != nil {
 		log.Panicf("error generating random int: %v", err)

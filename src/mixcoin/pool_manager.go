@@ -83,9 +83,11 @@ func managePool() {
 
 			randMixingChunkC <- chunk
 		case <-prune:
+			log.Printf("pruning expired receivable chunks")
 			expiredAddrs := make([]string, 10)
 			for addr, chunk := range pool {
 				if chunk.status == Receivable && isExpired(chunk) {
+					log.Printf("found expired chunk: %s", addr)
 					expiredAddrs = append(expiredAddrs, addr)
 				}
 			}

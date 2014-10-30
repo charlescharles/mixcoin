@@ -22,7 +22,7 @@ func sendChunk(chunk *Chunk, dest string) error {
 	}
 	*/
 
-	tx.AddTxIn(&btcwire.NewTxIn(chunk.txInfo.txOut), make([]byte, 10))
+	tx.AddTxIn(btcwire.NewTxIn(chunk.txInfo.txOut, make([]byte, 10)))
 
 	destAddr, err := decodeAddress(dest)
 	if err != nil {
