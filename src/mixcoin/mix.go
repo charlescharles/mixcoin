@@ -10,8 +10,9 @@ func mix(delay int, outAddr string) {
 	log.Printf("waiting %d blocks", delay)
 	time.Sleep(time.Duration(delay) * 10 * time.Minute)
 
-	requestMixingChunkC <- true
-	outputChunk := <-randMixingChunkC
+	randCh := make(chan *Chunk)
+	requestChunkC <- randCh
+	outputChunk := <- randCh
 
 	log.Printf("sending output chunk: %v", outputChunk)
 
@@ -26,6 +27,8 @@ func generateDelay(returnBy int) int {
 	if err != nil {
 		log.Panicf("error getting blockchain height: %v", err)
 	}
+	log.Printf("generating delay with returnby %d and currheight %d", returnBy, currHeight)
 	rand := randInt(returnBy - 1 - currHeight)
-	return currHeight + rand
+	return rand
+	//return currHeight + rand
 }

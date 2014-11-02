@@ -2,57 +2,55 @@ package mixcoin
 
 import (
 	"btcscript"
+	"btcutil"
 	"btcwire"
 	"log"
 )
 
 type TxInfo struct {
-	//txOuts         []*btcwire.OutPoint
 	receivedAmount int64
 	txOut          *btcwire.OutPoint
 }
 
 func sendChunk(chunk *Chunk, dest string) error {
-	log.Printf("sending a chunk to %s", dest)
-	tx := btcwire.NewMsgTx()
+	log.Printf("sending the following chunk to %s:", dest)
+	log.Printf("%v", chunk)
 
-	/**
-	for _, prevOut := range chunk.txInfo.txOuts {
-		tx.AddTxIn(btcwire.NewTxIn(prevOut, make([]byte, 10)))
-	}
-	*/
-
-	tx.AddTxIn(btcwire.NewTxIn(chunk.txInfo.txOut, make([]byte, 10)))
-
+	txInfo := chunk.txInfo
+	destAmount := txInfo.receivedAmount - 200000
 	destAddr, err := decodeAddress(dest)
 	if err != nil {
-		log.Panicln("error decoding address: %v", err)
+		log.Printf("error decoding address: %v", err)
 	}
-	pkScript, err := btcscript.PayToAddrScript(destAddr)
+
+	txInput := btcjson.TransactionInput{txInfo.txOut.Hash, txInfo.txOut.Index}
+
+	inputs := []btcjson.TransactionInput{txInput}
+
+	outAmounts := map[btcutil.Address]btcutil.Amount{
+		destAddr: btcutil.Amount(destAmount),
+	}
+
+	msgTx, err := rpcClient.CreateRawTransaction(inputs, outAmounts)
 	if err != nil {
-		log.Panicf("error creating pkscript: %v", err)
-		return err
+		log.Printf("error creating tx: %v", err)
 	}
+	log.Printf("created tx: %v", msgTx)
 
-	txOut := btcwire.NewTxOut(chunk.txInfo.receivedAmount, pkScript)
-	tx.AddTxOut(txOut)
-
-	tx, signed, err := rpcClient.SignRawTransaction(tx)
-	if !signed {
-		log.Printf("couldn't sign input transaction!")
-	}
+	signedTx, signed, err := rpcClient.SignRawTransaction(msgTx)
+	log.Printf("signed: %v", signed)
 	if err != nil {
-		log.Panicf("error signing input transaction: %v", err)
+		log.Printf("error signing tx: %v", err)
+		return
 	}
+	log.Printf("signed tx: %v", signedTx)
 
-	// allow high fees?
-	txHash, err := rpcClient.SendRawTransaction(tx, true)
-
+	txHash, err := rpcClient.SendRawTransaction(signedTx, true)
 	if err != nil {
-		log.Panicf("error sending transaction: %v", err)
-		return err
+		log.Printf("error sending tx: %v", err)
+		return
 	}
+	log.Printf("sent tx with tx hash: %v", txHash)
 
-	log.Printf("sent transaction with hash: %v", txHash)
 	return nil
 }

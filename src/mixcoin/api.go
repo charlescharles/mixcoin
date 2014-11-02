@@ -27,7 +27,7 @@ func apiHandleChunkRequest(rw http.ResponseWriter, req *http.Request) {
 
 	err = handleChunkRequest(&chunkMsg)
 	if err != nil {
-		log.Panicf("error handling chunk request: ", err)
+		log.Printf("error handling chunk request: ", err)
 		rw.WriteHeader(500)
 		return
 	}

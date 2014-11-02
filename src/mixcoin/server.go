@@ -4,9 +4,9 @@ import (
 	"btcjson"
 	"btcutil"
 	"btcwire"
+	"btcws"
 	"errors"
 	"log"
-	"time"
 )
 
 const (
@@ -18,16 +18,6 @@ func StartMixcoinServer() {
 
 	StartRpcClient()
 	StartPoolManager()
-
-	go watchTransactions()
-}
-
-func watchTransactions() {
-	for {
-		time.Sleep(time.Duration(3) * time.Minute)
-		log.Printf("manually triggering transactions scan")
-		onNewBlock(nil, -1)
-	}
 }
 
 func handleChunkRequest(chunkMsg *ChunkMessage) error {
@@ -84,15 +74,31 @@ func validateChunkMsg(chunkMsg *ChunkMessage) error {
 	if chunkMsg.SendBy <= currHeight {
 		return errors.New("sendby time has already passed")
 	}
+	if chunkMsg.ReturnBy-chunkMsg.SendBy < 2 {
+		return errors.New("not enough time between sendby and returnby")
+	}
 	return nil
 }
 
 func registerNewChunk(encodedAddr string, chunkMsg *ChunkMessage) {
 	newChunkC <- &NewChunk{encodedAddr, chunkMsg}
+	decoded, _ := decodeAddress(encodedAddr)
+	log.Printf("set notification for address %s", decoded)
+	rpcClient.NotifyReceived([]btcutil.Address{decoded})
 }
 
-func onNewBlock(blockHash *btcwire.ShaHash, height int32) {
-	log.Printf("new block connected with height %d", height)
+func onRecvTx(transaction *btcutil.Tx, details *btcws.BlockDetails) {
+	log.Printf("received transaction: %v", transaction)
+	log.Printf("block details: %v", details)
+}
+
+func onBlockConnected(blockHash *btcwire.ShaHash, height int32) {
+	log.Printf("new block connected with hash %v, height %d", blockHash, height)
+
+	go findTransactions()
+}
+
+func findTransactions() {
 	cfg := GetConfig()
 	minConf := cfg.MinConfirmations
 
@@ -107,7 +113,6 @@ func onNewBlock(blockHash *btcwire.ShaHash, height int32) {
 			receivableAddrs = append(receivableAddrs, decoded)
 		}
 	}
-
 	log.Printf("current receivable addresses: %v", receivableAddrs)
 
 	receivedByAddress, err := rpcClient.ListUnspentMinMaxAddresses(minConf, MAX_CONF, receivableAddrs)
@@ -140,6 +145,7 @@ func onNewBlock(blockHash *btcwire.ShaHash, height int32) {
 
 		receivedChunkC <- &ReceivedChunk{addr, txInfo}
 	}
+	log.Printf("done handling block")
 }
 
 func isValidReceivedResult(result *btcjson.ListUnspentResult) bool {

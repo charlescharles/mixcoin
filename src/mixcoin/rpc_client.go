@@ -30,8 +30,8 @@ func StartRpcClient() {
 	}
 
 	ntfnHandlers := btcrpcclient.NotificationHandlers{
-		OnBlockConnected: onNewBlock,
-		//		OnRecvTx:         nil,
+		OnBlockConnected: onBlockConnected,
+		OnRecvTx:         onRecvTx,
 	}
 
 	client, err := btcrpcclient.New(connCfg, &ntfnHandlers)
@@ -76,10 +76,11 @@ func getNewAddress() (*btcutil.Address, error) {
 
 // TODO only update occasionally; no need to check every time
 func getBlockchainHeight() (int, error) {
+	log.Printf("getting blockchain height")
 	_, height32, err := rpcClient.GetBestBlock()
 	if err != nil {
 		return -1, err
 	}
-
+	log.Printf("got blockchain height: %v", height32)
 	return int(height32), nil
 }
