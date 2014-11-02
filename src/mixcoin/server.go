@@ -18,6 +18,7 @@ func StartMixcoinServer() {
 
 	StartRpcClient()
 	StartPoolManager()
+	BootstrapMixingPool()
 }
 
 func handleChunkRequest(chunkMsg *ChunkMessage) error {

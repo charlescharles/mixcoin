@@ -1,5 +1,11 @@
 package mixcoin
 
+import (
+	"btcutil"
+	"btcwire"
+	"log"
+)
+
 type BootstrapMixChunk struct {
 	addr   string
 	amount float64
@@ -7,9 +13,12 @@ type BootstrapMixChunk struct {
 	index  int
 }
 
-func (bootstrapMixChunk *BootstrapMixChunk) toReceivable() (*ReceivedChunk, err) {
-	txHash := btcwire.NewShaHashFromStr(bootstrapMixChunk.txId)
-	outpoint := btcwire.NewOutPoint(txHash, bootstrapMixChunk.index)
+func (bootstrapMixChunk *BootstrapMixChunk) toReceivable() (*ReceivedChunk, error) {
+	txHash, err := btcwire.NewShaHashFromStr(bootstrapMixChunk.txId)
+	if err != nil {
+		log.Printf("error creating sha hash from bootstrap txid: %v", err)
+	}
+	outpoint := btcwire.NewOutPoint(txHash, uint32(bootstrapMixChunk.index))
 	amountSatoshi := int64(bootstrapMixChunk.amount * btcutil.SatoshiPerBitcoin)
 
 	txInfo := &TxInfo{
@@ -35,6 +44,7 @@ var (
 	}
 )
 
-func Bootstrap() {
-	bootstrapMixC <- mixPool
+func BootstrapMixingPool() {
+	log.Printf("bootstrapping mix pool")
+	//bootstrapMixC <- mixPool
 }

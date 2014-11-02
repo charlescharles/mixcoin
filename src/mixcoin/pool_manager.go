@@ -31,7 +31,7 @@ var (
 	newChunkC      chan *NewChunk
 	receivedChunkC chan *ReceivedChunk
 	requestChunkC  chan chan *Chunk
-	bootstrapMixC  chan []*BoostrapMixChunk
+	bootstrapMixC  chan []*BootstrapMixChunk
 	prune          chan bool
 
 	mixingAddrs []string
@@ -82,7 +82,11 @@ func managePool() {
 
 func poolHandleBootstrap(bootstrapChunks []*BootstrapMixChunk) {
 	for _, bootstrapChunk := range bootstrapChunks {
-		receivableForm := bootstrapChunk.toReceivable()
+		receivableForm, err := bootstrapChunk.toReceivable()
+		if err != nil {
+			log.Printf("error parsing bootstrap chunk: %v", err)
+		}
+
 		chunk := &Chunk{
 			status:  Mixing,
 			message: nil,
