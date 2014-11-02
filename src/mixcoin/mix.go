@@ -12,7 +12,7 @@ func mix(delay int, outAddr string) {
 
 	randCh := make(chan *Chunk)
 	requestChunkC <- randCh
-	outputChunk := <- randCh
+	outputChunk := <-randCh
 
 	log.Printf("sending output chunk: %v", outputChunk)
 
@@ -29,6 +29,7 @@ func generateDelay(returnBy int) int {
 	}
 	log.Printf("generating delay with returnby %d and currheight %d", returnBy, currHeight)
 	rand := randInt(returnBy - 1 - currHeight)
-	return rand
+	log.Printf("generated delay %v", rand)
+	return 0
 	//return currHeight + rand
 }

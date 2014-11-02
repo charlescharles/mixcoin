@@ -31,6 +31,7 @@ var (
 	newChunkC      chan *NewChunk
 	receivedChunkC chan *ReceivedChunk
 	requestChunkC  chan chan *Chunk
+	bootstrapMixC  chan []*BoostrapMixChunk
 	prune          chan bool
 
 	mixingAddrs []string
@@ -54,9 +55,7 @@ func StartPoolManager() {
 }
 
 func managePool() {
-	log.Printf("managing pool")
 	for {
-		log.Printf("poolmgr tick")
 		select {
 		case newChunk := <-newChunkC:
 			log.Printf("poolmgr handling new chunk: %v", newChunk)
@@ -73,13 +72,29 @@ func managePool() {
 		case <-prune:
 			log.Printf("poolmgr pruning")
 			poolPrune()
+
+		case bootstrapChunks := <-bootstrapMixC:
+			log.Printf("poolmgr bootstrapping with chunks %v", bootstrapChunks)
+			poolHandleBootstrap(bootstrapChunks)
 		}
 	}
 }
 
-func poolPrune() {
-	log.Printf("pruning expired receivable chunks")
+func poolHandleBootstrap(bootstrapChunks []*BootstrapMixChunk) {
+	for _, bootstrapChunk := range bootstrapChunks {
+		receivableForm := bootstrapChunk.toReceivable()
+		chunk := &Chunk{
+			status:  Mixing,
+			message: nil,
+			txInfo:  receivableForm.txInfo,
+		}
 
+		pool[receivableForm.addr] = chunk
+		mixingAddrs = append(mixingAddrs, receivableForm.addr)
+	}
+}
+
+func poolPrune() {
 	expiredAddrs := make([]string, 10)
 	for addr, chunk := range pool {
 		if chunk.status == Receivable && isExpired(chunk) {
@@ -95,12 +110,12 @@ func poolPrune() {
 func poolHandleNew(addr string, chunkMsg *ChunkMessage) {
 	chunk := &Chunk{Receivable, chunkMsg, nil}
 	pool[addr] = chunk
-	return
 }
 
 func poolPopRandomMixingChunk() *Chunk {
 	randIndex := randInt(len(mixingAddrs))
 	randAddr := mixingAddrs[randIndex]
+	log.Printf("picked random address %s at index %d", randAddr, randIndex)
 
 	chunk := pool[randAddr]
 	log.Printf("popping rand chunk: %v", chunk)

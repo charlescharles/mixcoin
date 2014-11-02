@@ -6,5 +6,6 @@ import (
 
 func main() {
 	mixcoin.StartMixcoinServer()
+	mixcoin.SendChunkTestnet()
 	mixcoin.StartApiServer()
 }

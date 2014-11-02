@@ -7,10 +7,10 @@ import (
 )
 
 func SendChunkTester() {
-	chunktest2()
+	chunktest3()
 }
 
-func chunktest2() {
+func chunktest3() {
 	log.Printf("testing chunk sending")
 
 	change := "mzXbdk7wecJRaxQbHcefLSv6GjAmMSUQ8o"
