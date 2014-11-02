@@ -81,10 +81,14 @@ func validateChunkMsg(chunkMsg *ChunkMessage) error {
 }
 
 func registerNewChunk(encodedAddr string, chunkMsg *ChunkMessage) {
-	newChunkC <- &NewChunk{encodedAddr, chunkMsg}
+	log.Printf("registering new chunk at address %s", encodedAddr)
+	chunk := &NewChunk{encodedAddr, chunkMsg}
+	log.Printf("created chunk %v", chunk)
+	newChunkC <- chunk
+	log.Printf("added chunk to pool")
 	decoded, _ := decodeAddress(encodedAddr)
 	log.Printf("set notification for address %s", decoded)
-	rpcClient.NotifyReceived([]btcutil.Address{decoded})
+	rpcClient.NotifyReceivedAsync([]btcutil.Address{decoded})
 }
 
 func onRecvTx(transaction *btcutil.Tx, details *btcws.BlockDetails) {

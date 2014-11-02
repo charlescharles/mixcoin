@@ -1,7 +1,7 @@
 package mixcoin
 
 import (
-	"btcscript"
+	"btcjson"
 	"btcutil"
 	"btcwire"
 	"log"
@@ -23,7 +23,7 @@ func sendChunk(chunk *Chunk, dest string) error {
 		log.Printf("error decoding address: %v", err)
 	}
 
-	txInput := btcjson.TransactionInput{txInfo.txOut.Hash, txInfo.txOut.Index}
+	txInput := btcjson.TransactionInput{txInfo.txOut.Hash.String(), txInfo.txOut.Index}
 
 	inputs := []btcjson.TransactionInput{txInput}
 
@@ -41,14 +41,14 @@ func sendChunk(chunk *Chunk, dest string) error {
 	log.Printf("signed: %v", signed)
 	if err != nil {
 		log.Printf("error signing tx: %v", err)
-		return
+		return err
 	}
 	log.Printf("signed tx: %v", signedTx)
 
 	txHash, err := rpcClient.SendRawTransaction(signedTx, true)
 	if err != nil {
 		log.Printf("error sending tx: %v", err)
-		return
+		return err
 	}
 	log.Printf("sent tx with tx hash: %v", txHash)
 

@@ -2,9 +2,7 @@ package mixcoin
 
 import (
 	"btcjson"
-	"btcscript"
 	"btcutil"
-	"btcwire"
 	"log"
 )
 
@@ -32,7 +30,6 @@ func chunktest2() {
 	}
 
 	txInId := "36c1ebe170709f931860e8605a03b74f67814b6d001ada2b3832132556ece5ab"
-	txInHash, err := btcwire.NewShaHashFromStr(txInId)
 	txInput := btcjson.TransactionInput{txInId, 0}
 
 	inputs := []btcjson.TransactionInput{txInput}

@@ -62,6 +62,5 @@ func signChunkMessage(chunkMsg *ChunkMessage) error {
 	armoredSig := base64.StdEncoding.EncodeToString(armoredSigEnc)
 
 	chunkMsg.Warrant = armoredSig
-
 	return nil
 }

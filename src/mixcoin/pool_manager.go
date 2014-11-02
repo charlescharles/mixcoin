@@ -36,6 +36,16 @@ var (
 	mixingAddrs []string
 )
 
+func init() {
+	pool = make(map[string]*Chunk)
+	newChunkC = make(chan *NewChunk)
+	receivedChunkC = make(chan *ReceivedChunk)
+	requestChunkC = make(chan chan *Chunk)
+	prune = make(chan bool)
+
+	mixingAddrs = make([]string, 20)
+}
+
 func StartPoolManager() {
 	log.Println("starting pool manager")
 
@@ -44,18 +54,24 @@ func StartPoolManager() {
 }
 
 func managePool() {
+	log.Printf("managing pool")
 	for {
+		log.Printf("poolmgr tick")
 		select {
 		case newChunk := <-newChunkC:
+			log.Printf("poolmgr handling new chunk: %v", newChunk)
 			poolHandleNew(newChunk.addr, newChunk.chunkMsg)
 
 		case receivedChunk := <-receivedChunkC:
+			log.Printf("poolmgr handling received chunk: %v", receivedChunk)
 			poolHandleReceived(receivedChunk.addr, receivedChunk.txInfo)
 
-		case ch := <-requestMixingChunkC:
+		case ch := <-requestChunkC:
+			log.Printf("poolmgr handling chunk request: %v", ch)
 			ch <- poolPopRandomMixingChunk()
 
 		case <-prune:
+			log.Printf("poolmgr pruning")
 			poolPrune()
 		}
 	}
@@ -79,6 +95,7 @@ func poolPrune() {
 func poolHandleNew(addr string, chunkMsg *ChunkMessage) {
 	chunk := &Chunk{Receivable, chunkMsg, nil}
 	pool[addr] = chunk
+	return
 }
 
 func poolPopRandomMixingChunk() *Chunk {
@@ -99,22 +116,21 @@ func poolPopRandomMixingChunk() *Chunk {
 func poolHandleReceived(addr string, txInfo *TxInfo) {
 	// change chunk to mixing, add txoutinfo, add chunk to mixingaddrs,
 	// mix
-	log.Printf("received chunk: %v", receivedChunk)
-	log.Printf("with txinfo: %v", receivedChunk.txInfo)
-	chunk, ok := pool[receivedChunk.addr]
+	log.Printf("received chunk at txinfo: %v", txInfo)
+	chunk, ok := pool[addr]
 	if !ok {
-		log.Printf("pool doesn't contain this address: %v", receivedChunk.addr)
+		log.Printf("pool doesn't contain this address: %v", addr)
 		return
 	}
-	chunk.txInfo = receivedChunk.txInfo
+	chunk.txInfo = txInfo
 	log.Printf("assigned txinfo")
 
-	pool[receivedChunk.addr].status = Mixing
-	mixingAddrs = append(mixingAddrs, receivedChunk.addr)
-	log.Printf("added address %s to mixing pool", receivedChunk.addr)
-	randDelay := generateDelay(pool[receivedChunk.addr].message.ReturnBy)
+	pool[addr].status = Mixing
+	mixingAddrs = append(mixingAddrs, addr)
+	log.Printf("added address %s to mixing pool", addr)
+	randDelay := generateDelay(chunk.message.ReturnBy)
 	log.Printf("generated delay: %v blocks", randDelay)
-	outAddr := receivedChunk.addr
+	outAddr := chunk.message.OutAddr
 
 	go mix(randDelay, outAddr)
 }
