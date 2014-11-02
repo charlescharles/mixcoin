@@ -89,7 +89,7 @@ func registerNewChunk(encodedAddr string, chunkMsg *ChunkMessage) {
 	log.Printf("added chunk to pool")
 	decoded, _ := decodeAddress(encodedAddr)
 	log.Printf("set notification for address %s", decoded)
-	rpcClient.NotifyReceivedAsync([]btcutil.Address{decoded})
+	getRpcClient().NotifyReceivedAsync([]btcutil.Address{decoded})
 }
 
 func onRecvTx(transaction *btcutil.Tx, details *btcws.BlockDetails) {
@@ -120,7 +120,7 @@ func findTransactions() {
 	}
 	log.Printf("current receivable addresses: %v", receivableAddrs)
 
-	receivedByAddress, err := rpcClient.ListUnspentMinMaxAddresses(minConf, MAX_CONF, receivableAddrs)
+	receivedByAddress, err := getRpcClient().ListUnspentMinMaxAddresses(minConf, MAX_CONF, receivableAddrs)
 	if err != nil {
 		log.Panicf("error listing unspent by address: %v", err)
 	}

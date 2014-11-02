@@ -1,13 +1,40 @@
 package mixcoin
 
 import (
+	"btcjson"
 	"btcrpcclient"
 	"btcutil"
+	"btcwire"
 	"io/ioutil"
 	"log"
 )
 
-var rpcClient *btcrpcclient.Client
+type RpcClient interface {
+	NotifyBlocks() error
+	WalletPassphrase(string, int64) error
+	CreateEncryptedWallet(string) error
+	GetNewAddress() (btcutil.Address, error)
+	GetBestBlock() (*btcwire.ShaHash, int32, error)
+	CreateRawTransaction([]btcjson.TransactionInput, map[btcutil.Address]btcutil.Amount) (*btcwire.MsgTx, error)
+	SignRawTransaction(*btcwire.MsgTx) (*btcwire.MsgTx, bool, error)
+	SendRawTransaction(*btcwire.MsgTx, bool) (*btcwire.ShaHash, error)
+	NotifyReceivedAsync([]btcutil.Address) btcrpcclient.FutureNotifyReceivedResult
+	ListUnspentMinMaxAddresses(int, int, []btcutil.Address) ([]btcjson.ListUnspentResult, error)
+}
+
+var rpcClient RpcClient
+
+func getRpcClient() RpcClient {
+	return rpcClient
+}
+
+func newRpcClient(config *btcrpcclient.ConnConfig, ntfnHandlers *btcrpcclient.NotificationHandlers) RpcClient {
+	client, err := btcrpcclient.New(config, ntfnHandlers)
+	if err != nil {
+		log.Panicf("error creating rpc client: %v", err)
+	}
+	return client
+}
 
 func StartRpcClient() {
 	log.Println("starting rpc client")
@@ -34,10 +61,7 @@ func StartRpcClient() {
 		OnRecvTx:         onRecvTx,
 	}
 
-	client, err := btcrpcclient.New(connCfg, &ntfnHandlers)
-	if err != nil {
-		log.Panicf("error creating rpc client: %v", err)
-	}
+	client := newRpcClient(connCfg, &ntfnHandlers)
 
 	// Register for block connect and disconnect notifications.
 	if err = client.NotifyBlocks(); err != nil {
@@ -60,7 +84,7 @@ func StartRpcClient() {
 }
 
 func getNewAddress() (*btcutil.Address, error) {
-	addr, err := rpcClient.GetNewAddress()
+	addr, err := getRpcClient().GetNewAddress()
 	if err != nil {
 		log.Panicf("error getting new address: %v", err)
 	}
@@ -77,7 +101,7 @@ func getNewAddress() (*btcutil.Address, error) {
 // TODO only update occasionally; no need to check every time
 func getBlockchainHeight() (int, error) {
 	log.Printf("getting blockchain height")
-	_, height32, err := rpcClient.GetBestBlock()
+	_, height32, err := getRpcClient().GetBestBlock()
 	if err != nil {
 		return -1, err
 	}

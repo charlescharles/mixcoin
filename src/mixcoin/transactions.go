@@ -31,13 +31,13 @@ func sendChunk(chunk *Chunk, dest string) error {
 		destAddr: btcutil.Amount(destAmount),
 	}
 
-	msgTx, err := rpcClient.CreateRawTransaction(inputs, outAmounts)
+	msgTx, err := getRpcClient().CreateRawTransaction(inputs, outAmounts)
 	if err != nil {
 		log.Printf("error creating tx: %v", err)
 	}
 	log.Printf("created tx: %v", msgTx)
 
-	signedTx, signed, err := rpcClient.SignRawTransaction(msgTx)
+	signedTx, signed, err := getRpcClient().SignRawTransaction(msgTx)
 	log.Printf("signed: %v", signed)
 	if err != nil {
 		log.Printf("error signing tx: %v", err)
@@ -45,7 +45,7 @@ func sendChunk(chunk *Chunk, dest string) error {
 	}
 	log.Printf("signed tx: %v", signedTx)
 
-	txHash, err := rpcClient.SendRawTransaction(signedTx, true)
+	txHash, err := getRpcClient().SendRawTransaction(signedTx, true)
 	if err != nil {
 		log.Printf("error sending tx: %v", err)
 		return err
