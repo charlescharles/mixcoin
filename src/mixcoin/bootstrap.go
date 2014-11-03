@@ -49,14 +49,14 @@ var (
 		&BootstrapFeeChunk{
 			addr:       "mjadFfF2h3sNpU9iMETSiECCz7ArKdkx94",
 			amount:     5.7,
-			txId:       "a43ccc3b34ded6f18ccb5c066e421148a67334131f58067bbfc74e66a20d98b3",
-			index:      0,
+			txId:       "4a708f8563a074b47585f0830d75b8afb3c8073fda2b972e2388f50a2eb03bc4",
+			index:      1,
 			privKeyWif: "92jwjgG3e7o8EcXAnYzjiVm3ukBawd34gQuYd7QuNaVUgLJc4Ue",
 		},
 	}
 )
 
 func BootstrapPool() {
-	log.Printf("bootstrapping mix pool")
+	log.Printf("bootstrapping mix pool with chunks: %v", bootstrapChunks)
 	bootstrapFeeChunks(bootstrapChunks)
 }

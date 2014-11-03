@@ -43,6 +43,7 @@ var (
 )
 
 func init() {
+	// don't initialize mixingAddrs and retainedAddrs because they're zerolength slices
 	pool = make(map[string]*Chunk)
 	newChunkC = make(chan *ChunkMessage)
 	receivedChunkC = make(chan *ReceivedChunk)
@@ -50,10 +51,8 @@ func init() {
 	requestReceivablesC = make(chan chan []btcutil.Address)
 	requestFeeChunkC = make(chan chan *Chunk)
 	addFeeChunkC = make(chan *Chunk)
+	bootstrapFeeC = make(chan []*BootstrapFeeChunk)
 	prune = make(chan bool)
-
-	mixingAddrs = make([]string, 20)
-	retainedAddrs = make([]string, 20)
 }
 
 func StartPoolManager() {
@@ -84,7 +83,7 @@ func managePool() {
 
 		case ch := <-requestFeeChunkC:
 			log.Printf("poolmgr handling request for fee chunk")
-			ch <- poolPopRandomMixingChunk()
+			ch <- poolPopRandomFeeChunk()
 
 		case newFeeChunk := <-addFeeChunkC:
 			log.Printf("poolmgr adding fee chunk")
@@ -94,9 +93,9 @@ func managePool() {
 			log.Printf("poolmgr pruning")
 			poolPrune()
 
-		case bootstrapChunks := <-bootstrapFeeC:
-			log.Printf("poolmgr bootstrapping with chunks %v", bootstrapChunks)
-			poolHandleBootstrap(bootstrapChunks)
+		case chunks := <-bootstrapFeeC:
+			log.Printf("poolmgr bootstrapping chunks")
+			poolHandleBootstrap(chunks)
 		}
 	}
 }
@@ -131,18 +130,22 @@ func getFeeChunk() *Chunk {
 }
 
 func bootstrapFeeChunks(chunks []*BootstrapFeeChunk) {
+	log.Printf("sending bootstrap chunks to poolmgr")
 	bootstrapFeeC <- chunks
 }
 
 func poolAddFeeChunk(chunk *Chunk) {
+	log.Printf("adding fee chunk: %v", chunk)
 	chunk.status = Retained
 	pool[chunk.addr] = chunk
 	retainedAddrs = append(retainedAddrs, chunk.addr)
 }
 
 func poolGetReceivableChunks() []btcutil.Address {
-	receivableAddrs := make([]btcutil.Address, 10)
+	var receivableAddrs []btcutil.Address
+	log.Printf("poolmgr: enumerating receivable chunks")
 	for addr, chunk := range pool {
+		log.Printf("candidate: %v", chunk)
 		if chunk.status == Receivable {
 			decoded, err := decodeAddress(addr)
 			if err != nil {
@@ -155,8 +158,12 @@ func poolGetReceivableChunks() []btcutil.Address {
 }
 
 func poolHandleBootstrap(bootstrapChunks []*BootstrapFeeChunk) {
+	log.Printf("poolmgr bootstrapping chunks")
 	for _, bootstrapChunk := range bootstrapChunks {
 		chunk, wif, err := bootstrapChunk.normalize()
+
+		log.Printf("importing chunk %v", bootstrapChunk)
+		log.Printf("with privkey %v", wif)
 
 		if err != nil {
 			log.Printf("error parsing bootstrap chunk: %v", err)
@@ -171,10 +178,12 @@ func poolHandleBootstrap(bootstrapChunks []*BootstrapFeeChunk) {
 		pool[chunk.addr] = chunk
 		retainedAddrs = append(retainedAddrs, chunk.addr)
 	}
+	log.Printf("retainedAddrs is now: %v", retainedAddrs)
+	log.Printf("with length %v", len(retainedAddrs))
 }
 
 func poolPrune() {
-	expiredAddrs := make([]string, 10)
+	var expiredAddrs []string
 	for addr, chunk := range pool {
 		if chunk.status == Receivable && isExpired(chunk) {
 			log.Printf("found expired chunk: %s", addr)

@@ -99,6 +99,7 @@ func findTransactions(blockHash *btcwire.ShaHash) {
 	cfg := GetConfig()
 	minConf := cfg.MinConfirmations
 
+	log.Printf("getting receivable chunks")
 	receivableAddrs := getReceivableChunks()
 	log.Printf("current receivable addresses: %v", receivableAddrs)
 
