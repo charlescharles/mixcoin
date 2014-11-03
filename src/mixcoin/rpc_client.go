@@ -58,7 +58,6 @@ func StartRpcClient() {
 
 	ntfnHandlers := btcrpcclient.NotificationHandlers{
 		OnBlockConnected: onBlockConnected,
-		OnRecvTx:         onRecvTx,
 	}
 
 	client := newRpcClient(connCfg, &ntfnHandlers)

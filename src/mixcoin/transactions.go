@@ -12,23 +12,36 @@ type TxInfo struct {
 	txOut          *btcwire.OutPoint
 }
 
-func sendChunk(chunk *Chunk, dest string) error {
+func sendChunkWithFee(inputChunk *Chunk, dest string) error {
 	log.Printf("sending the following chunk to %s:", dest)
-	log.Printf("%v", chunk)
+	log.Printf("%v", inputChunk)
 
-	txInfo := chunk.txInfo
-	destAmount := txInfo.receivedAmount - 200000
+	cfg := GetConfig()
+
+	feeChunk := getFeeChunk()
+	feeChunkAmt := feeChunk.txInfo.receivedAmount
+	feeTxOut := feeChunk.GetAsTxInput()
+
+	inputChunkAmt := inputChunk.txInfo.receivedAmount
+	inputTxOut := inputChunk.GetAsTxInput()
+
+	destAmt := cfg.ChunkSize
 	destAddr, err := decodeAddress(dest)
 	if err != nil {
 		log.Printf("error decoding address: %v", err)
 	}
 
-	txInput := btcjson.TransactionInput{txInfo.txOut.Hash.String(), txInfo.txOut.Index}
+	changeAddr, err := decodeAddress(feeChunk.addr)
+	if err != nil {
+		log.Printf("error decoding address: %v", err)
+	}
+	changeAmt := feeChunkAmt + inputChunkAmt - destAmt - cfg.TxFee
 
-	inputs := []btcjson.TransactionInput{txInput}
+	inputs := []btcjson.TransactionInput{feeTxOut, inputTxOut}
 
 	outAmounts := map[btcutil.Address]btcutil.Amount{
-		destAddr: btcutil.Amount(destAmount),
+		destAddr:   btcutil.Amount(destAmt),
+		changeAddr: btcutil.Amount(changeAmt),
 	}
 
 	msgTx, err := getRpcClient().CreateRawTransaction(inputs, outAmounts)

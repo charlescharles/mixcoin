@@ -4,7 +4,6 @@ import (
 	"btcjson"
 	"btcutil"
 	"btcwire"
-	"btcws"
 	"errors"
 	"log"
 )
@@ -83,41 +82,24 @@ func validateChunkMsg(chunkMsg *ChunkMessage) error {
 
 func registerNewChunk(encodedAddr string, chunkMsg *ChunkMessage) {
 	log.Printf("registering new chunk at address %s", encodedAddr)
-	chunk := &NewChunk{encodedAddr, chunkMsg}
-	log.Printf("created chunk %v", chunk)
-	newChunkC <- chunk
+	addChunkToPool(chunkMsg)
 	log.Printf("added chunk to pool")
 	decoded, _ := decodeAddress(encodedAddr)
 	log.Printf("set notification for address %s", decoded)
 	getRpcClient().NotifyReceivedAsync([]btcutil.Address{decoded})
 }
 
-func onRecvTx(transaction *btcutil.Tx, details *btcws.BlockDetails) {
-	log.Printf("received transaction: %v", transaction)
-	log.Printf("block details: %v", details)
-}
-
 func onBlockConnected(blockHash *btcwire.ShaHash, height int32) {
 	log.Printf("new block connected with hash %v, height %d", blockHash, height)
 
-	go findTransactions()
+	go findTransactions(blockHash)
 }
 
-func findTransactions() {
+func findTransactions(blockHash *btcwire.ShaHash) {
 	cfg := GetConfig()
 	minConf := cfg.MinConfirmations
 
-	// TODO don't access the pool
-	var receivableAddrs []btcutil.Address
-	for addr, chunk := range pool {
-		if chunk.status == Receivable {
-			decoded, err := decodeAddress(addr)
-			if err != nil {
-				log.Panicf("unable to decode address: %v", err)
-			}
-			receivableAddrs = append(receivableAddrs, decoded)
-		}
-	}
+	receivableAddrs := getReceivableChunks()
 	log.Printf("current receivable addresses: %v", receivableAddrs)
 
 	receivedByAddress, err := getRpcClient().ListUnspentMinMaxAddresses(minConf, MAX_CONF, receivableAddrs)
@@ -125,6 +107,7 @@ func findTransactions() {
 		log.Panicf("error listing unspent by address: %v", err)
 	}
 	log.Printf("received transactions: %v", receivedByAddress)
+
 	received := make(map[string]*TxInfo)
 	for _, result := range receivedByAddress {
 		addr := result.Address
@@ -148,7 +131,7 @@ func findTransactions() {
 		txInfo.receivedAmount = int64(received)
 		txInfo.txOut = outpoint
 
-		receivedChunkC <- &ReceivedChunk{addr, txInfo}
+		markReceived(addr, txInfo, blockHash)
 	}
 	log.Printf("done handling block")
 }

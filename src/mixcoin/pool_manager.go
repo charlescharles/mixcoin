@@ -1,7 +1,11 @@
 package mixcoin
 
 import (
+	"btcutil"
+	"btcwire"
 	"log"
+	"math/big"
+	"math/rand"
 	"time"
 )
 
@@ -16,35 +20,39 @@ const (
 	Retained
 )
 
-type NewChunk struct {
-	addr     string
-	chunkMsg *ChunkMessage
-}
-
 type ReceivedChunk struct {
-	addr   string
-	txInfo *TxInfo
+	addr      string
+	txInfo    *TxInfo
+	blockHash *btcwire.ShaHash
 }
 
 var (
-	pool           map[string]*Chunk
-	newChunkC      chan *NewChunk
-	receivedChunkC chan *ReceivedChunk
-	requestChunkC  chan chan *Chunk
-	bootstrapMixC  chan []*BootstrapMixChunk
-	prune          chan bool
+	pool                map[string]*Chunk
+	newChunkC           chan *ChunkMessage
+	receivedChunkC      chan *ReceivedChunk
+	requestMixChunkC    chan chan *Chunk
+	requestReceivablesC chan chan []btcutil.Address
+	requestFeeChunkC    chan chan *Chunk
+	addFeeChunkC        chan *Chunk
+	bootstrapMixC       chan []*BootstrapMixChunk
+	prune               chan bool
 
-	mixingAddrs []string
+	mixingAddrs   []string
+	retainedAddrs []string
 )
 
 func init() {
 	pool = make(map[string]*Chunk)
-	newChunkC = make(chan *NewChunk)
+	newChunkC = make(chan *ChunkMessage)
 	receivedChunkC = make(chan *ReceivedChunk)
-	requestChunkC = make(chan chan *Chunk)
+	requestMixChunkC = make(chan chan *Chunk)
+	requestReceivablesC = make(chan chan []btcutil.Address)
+	requestFeeChunkC = make(chan chan *Chunk)
+	addFeeChunkC = make(chan *Chunk)
 	prune = make(chan bool)
 
 	mixingAddrs = make([]string, 20)
+	retainedAddrs = make([]string, 20)
 }
 
 func StartPoolManager() {
@@ -57,17 +65,29 @@ func StartPoolManager() {
 func managePool() {
 	for {
 		select {
-		case newChunk := <-newChunkC:
-			log.Printf("poolmgr handling new chunk: %v", newChunk)
-			poolHandleNew(newChunk.addr, newChunk.chunkMsg)
+		case newChunkMsg := <-newChunkC:
+			log.Printf("poolmgr handling new chunk: %v", newChunkMsg)
+			poolHandleNew(newChunkMsg)
 
 		case receivedChunk := <-receivedChunkC:
 			log.Printf("poolmgr handling received chunk: %v", receivedChunk)
-			poolHandleReceived(receivedChunk.addr, receivedChunk.txInfo)
+			poolHandleReceived(receivedChunk.addr, receivedChunk.txInfo, receivedChunk.blockHash)
 
-		case ch := <-requestChunkC:
+		case ch := <-requestMixChunkC:
 			log.Printf("poolmgr handling chunk request: %v", ch)
 			ch <- poolPopRandomMixingChunk()
+
+		case ch := <-requestReceivablesC:
+			log.Printf("poolmgr handling request for receivable chunks")
+			ch <- poolGetReceivableChunks()
+
+		case ch := <-requestFeeChunkC:
+			log.Printf("poolmgr handling request for fee chunk")
+			ch <- poolPopRandomMixingChunk()
+
+		case newFeeChunk := <-addFeeChunkC:
+			log.Printf("poolmgr adding fee chunk")
+			poolAddFeeChunk(newFeeChunk)
 
 		case <-prune:
 			log.Printf("poolmgr pruning")
@@ -78,6 +98,55 @@ func managePool() {
 			poolHandleBootstrap(bootstrapChunks)
 		}
 	}
+}
+
+func addChunkToPool(chunkMsg *ChunkMessage) {
+	newChunkC <- chunkMsg
+}
+
+func getReceivableChunks() []btcutil.Address {
+	ch := make(chan []btcutil.Address)
+	requestReceivablesC <- ch
+	receivableAddrs := <-ch
+	return receivableAddrs
+}
+
+func markReceived(addr string, txInfo *TxInfo, blockHash *btcwire.ShaHash) {
+	receivedChunkC <- &ReceivedChunk{addr, txInfo, blockHash}
+}
+
+func getMixChunk() *Chunk {
+	ch := make(chan *Chunk)
+	requestMixChunkC <- ch
+	output := <-ch
+	return output
+}
+
+func getFeeChunk() *Chunk {
+	ch := make(chan *Chunk)
+	requestFeeChunkC <- ch
+	output := <-ch
+	return output
+}
+
+func poolAddFeeChunk(chunk *Chunk) {
+	chunk.status = Retained
+	pool[chunk.addr] = chunk
+	retainedAddrs = append(retainedAddrs, chunk.addr)
+}
+
+func poolGetReceivableChunks() []btcutil.Address {
+	receivableAddrs := make([]btcutil.Address, 10)
+	for addr, chunk := range pool {
+		if chunk.status == Receivable {
+			decoded, err := decodeAddress(addr)
+			if err != nil {
+				log.Panicf("unable to decode address: %v", err)
+			}
+			receivableAddrs = append(receivableAddrs, decoded)
+		}
+	}
+	return receivableAddrs
 }
 
 func poolHandleBootstrap(bootstrapChunks []*BootstrapMixChunk) {
@@ -111,12 +180,19 @@ func poolPrune() {
 	}
 }
 
-func poolHandleNew(addr string, chunkMsg *ChunkMessage) {
-	chunk := &Chunk{Receivable, chunkMsg, nil}
+func poolHandleNew(chunkMsg *ChunkMessage) {
+	addr := chunkMsg.MixAddr
+	chunk := &Chunk{
+		status:  Receivable,
+		message: chunkMsg,
+		txInfo:  nil,
+		addr:    addr,
+	}
 	pool[addr] = chunk
 }
 
 func poolPopRandomMixingChunk() *Chunk {
+	log.Printf("generating random index in [0, %d)", len(mixingAddrs))
 	randIndex := randInt(len(mixingAddrs))
 	randAddr := mixingAddrs[randIndex]
 	log.Printf("picked random address %s at index %d", randAddr, randIndex)
@@ -132,7 +208,7 @@ func poolPopRandomMixingChunk() *Chunk {
 	return chunk
 }
 
-func poolHandleReceived(addr string, txInfo *TxInfo) {
+func poolHandleReceived(addr string, txInfo *TxInfo, blockHash *btcwire.ShaHash) {
 	// change chunk to mixing, add txoutinfo, add chunk to mixingaddrs,
 	// mix
 	log.Printf("received chunk at txinfo: %v", txInfo)
@@ -141,10 +217,17 @@ func poolHandleReceived(addr string, txInfo *TxInfo) {
 		log.Printf("pool doesn't contain this address: %v", addr)
 		return
 	}
+
 	chunk.txInfo = txInfo
 	log.Printf("assigned txinfo")
 
-	pool[addr].status = Mixing
+	if isFee(chunk.message.Nonce, blockHash, chunk.message.Fee) {
+		chunk.status = Retained
+		retainedAddrs = append(retainedAddrs, addr)
+		return
+	}
+
+	chunk.status = Mixing
 	mixingAddrs = append(mixingAddrs, addr)
 	log.Printf("added address %s to mixing pool", addr)
 	randDelay := generateDelay(chunk.message.ReturnBy)
@@ -152,6 +235,36 @@ func poolHandleReceived(addr string, txInfo *TxInfo) {
 	outAddr := chunk.message.OutAddr
 
 	go mix(randDelay, outAddr)
+}
+
+func poolPopRandomFeeChunk() (*Chunk, error) {
+	log.Printf("generating random index in [0, %d)", len(retainedAddrs))
+	randIndex := randInt(len(retainedAddrs))
+	randAddr := retainedAddrs[randIndex]
+	log.Printf("picked random address %s at index %d", randAddr, randIndex)
+
+	chunk := pool[randAddr]
+	log.Printf("popping rand chunk: %v", chunk)
+	delete(pool, randAddr)
+	log.Printf("the chunk is still %v", chunk)
+
+	// remove from retainedAddrs
+	retainedAddrs[randIndex] = retainedAddrs[len(retainedAddrs)-1]
+	retainedAddrs = retainedAddrs[:len(retainedAddrs)-1]
+	return chunk, nil
+}
+
+func isFee(nonce int64, hash *btcwire.ShaHash, feeBips int) bool {
+	bigIntHash := big.NewInt(0)
+	bigIntHash.SetBytes(hash.Bytes())
+	hashInt := bigIntHash.Int64()
+
+	gen := nonce | hashInt
+	fee := float64(feeBips) * 1.0e-4
+
+	source := rand.NewSource(gen)
+	rng := rand.New(source)
+	return rng.Float64() <= fee
 }
 
 func isExpired(chunk *Chunk) bool {
