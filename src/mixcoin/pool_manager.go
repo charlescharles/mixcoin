@@ -1,8 +1,8 @@
 package mixcoin
 
 import (
-	"btcutil"
-	"btcwire"
+	"github.com/conformal/btcutil"
+	"github.com/conformal/btcwire"
 	"errors"
 	"log"
 	"math/big"

@@ -1,7 +1,7 @@
 package mixcoin
 
 import (
-	"btcutil"
+	"github.com/conformal/btcutil"
 )
 
 func decodeAddress(encoded string) (btcutil.Address, error) {

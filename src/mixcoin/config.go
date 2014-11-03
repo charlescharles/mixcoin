@@ -1,7 +1,7 @@
 package mixcoin
 
 import (
-	"btcnet"
+	"github.com/conformal/btcnet"
 	"bytes"
 	"encoding/json"
 	"fmt"

@@ -1,10 +1,10 @@
 package mixcoin
 
 import (
-	"btcjson"
-	"btcutil"
-	"btcwire"
-	"btcws"
+	"github.com/conformal/btcjson"
+	"github.com/conformal/btcutil"
+	"github.com/conformal/btcwire"
+	"github.com/conformal/btcws"
 	"github.com/stretchr/testify/mock"
 	"testing"
 )

@@ -1,7 +1,7 @@
 package mixcoin
 
 import (
-	"btcjson"
+	"github.com/conformal/btcjson"
 	"bytes"
 	"fmt"
 )

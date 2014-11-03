@@ -1,8 +1,8 @@
 package mixcoin
 
 import (
-	"btcjson"
-	"btcutil"
+	"github.com/conformal/btcjson"
+	"github.com/conformal/btcutil"
 	"log"
 )
 

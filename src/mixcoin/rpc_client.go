@@ -1,10 +1,10 @@
 package mixcoin
 
 import (
-	"btcjson"
-	"btcrpcclient"
-	"btcutil"
-	"btcwire"
+	"github.com/conformal/btcjson"
+	"github.com/conformal/btcrpcclient"
+	"github.com/conformal/btcutil"
+	"github.com/conformal/btcwire"
 	"io/ioutil"
 	"log"
 )
