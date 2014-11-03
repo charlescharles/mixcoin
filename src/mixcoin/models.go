@@ -27,14 +27,11 @@ type ChunkMessage struct {
 }
 
 // NOTE: assumes it's a single coin
-func (chunk *Chunk) GetAsTxInput() (btcjson.TransactionInput, error) {
+func (chunk *Chunk) GetAsTxInput() (*btcjson.TransactionInput, error) {
 	hash := chunk.txInfo.txOut.Hash
 	index := chunk.txInfo.txOut.Index
 
-	if !hash || !index {
-		return nil, errors.New("chunk doesn't have txouts")
-	}
-	return btcjson.TransactionInput{hash.String(), Index}
+	return &btcjson.TransactionInput{hash.String(), index}, nil
 }
 
 func (chunkMsg *ChunkMessage) String() string {

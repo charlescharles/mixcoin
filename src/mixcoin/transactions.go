@@ -20,10 +20,18 @@ func sendChunkWithFee(inputChunk *Chunk, dest string) error {
 
 	feeChunk := getFeeChunk()
 	feeChunkAmt := feeChunk.txInfo.receivedAmount
-	feeTxOut := feeChunk.GetAsTxInput()
+	feeTxOut, err := feeChunk.GetAsTxInput()
+
+	if err != nil {
+		log.Printf("error getting txinput: %v", err)
+	}
 
 	inputChunkAmt := inputChunk.txInfo.receivedAmount
-	inputTxOut := inputChunk.GetAsTxInput()
+	inputTxOut, err := inputChunk.GetAsTxInput()
+
+	if err != nil {
+		log.Printf("error getting txinput: %v", err)
+	}
 
 	destAmt := cfg.ChunkSize
 	destAddr, err := decodeAddress(dest)
@@ -37,7 +45,7 @@ func sendChunkWithFee(inputChunk *Chunk, dest string) error {
 	}
 	changeAmt := feeChunkAmt + inputChunkAmt - destAmt - cfg.TxFee
 
-	inputs := []btcjson.TransactionInput{feeTxOut, inputTxOut}
+	inputs := []btcjson.TransactionInput{*feeTxOut, *inputTxOut}
 
 	outAmounts := map[btcutil.Address]btcutil.Amount{
 		destAddr:   btcutil.Amount(destAmt),

@@ -3,6 +3,7 @@ package mixcoin
 import (
 	"btcutil"
 	"btcwire"
+	"errors"
 	"log"
 	"math/big"
 	"math/rand"
@@ -34,7 +35,7 @@ var (
 	requestReceivablesC chan chan []btcutil.Address
 	requestFeeChunkC    chan chan *Chunk
 	addFeeChunkC        chan *Chunk
-	bootstrapMixC       chan []*BootstrapMixChunk
+	bootstrapFeeC       chan []*BootstrapFeeChunk
 	prune               chan bool
 
 	mixingAddrs   []string
@@ -93,7 +94,7 @@ func managePool() {
 			log.Printf("poolmgr pruning")
 			poolPrune()
 
-		case bootstrapChunks := <-bootstrapMixC:
+		case bootstrapChunks := <-bootstrapFeeC:
 			log.Printf("poolmgr bootstrapping with chunks %v", bootstrapChunks)
 			poolHandleBootstrap(bootstrapChunks)
 		}
@@ -129,6 +130,10 @@ func getFeeChunk() *Chunk {
 	return output
 }
 
+func bootstrapFeeChunks(chunks []*BootstrapFeeChunk) {
+	bootstrapFeeC <- chunks
+}
+
 func poolAddFeeChunk(chunk *Chunk) {
 	chunk.status = Retained
 	pool[chunk.addr] = chunk
@@ -149,21 +154,22 @@ func poolGetReceivableChunks() []btcutil.Address {
 	return receivableAddrs
 }
 
-func poolHandleBootstrap(bootstrapChunks []*BootstrapMixChunk) {
+func poolHandleBootstrap(bootstrapChunks []*BootstrapFeeChunk) {
 	for _, bootstrapChunk := range bootstrapChunks {
-		receivableForm, err := bootstrapChunk.toReceivable()
+		chunk, wif, err := bootstrapChunk.normalize()
+
 		if err != nil {
 			log.Printf("error parsing bootstrap chunk: %v", err)
 		}
 
-		chunk := &Chunk{
-			status:  Mixing,
-			message: nil,
-			txInfo:  receivableForm.txInfo,
+		err = getRpcClient().ImportPrivKey(wif)
+
+		if err != nil {
+			log.Printf("error importing privkey: %v", err)
 		}
 
-		pool[receivableForm.addr] = chunk
-		mixingAddrs = append(mixingAddrs, receivableForm.addr)
+		pool[chunk.addr] = chunk
+		retainedAddrs = append(retainedAddrs, chunk.addr)
 	}
 }
 
@@ -239,6 +245,9 @@ func poolHandleReceived(addr string, txInfo *TxInfo, blockHash *btcwire.ShaHash)
 
 func poolPopRandomFeeChunk() (*Chunk, error) {
 	log.Printf("generating random index in [0, %d)", len(retainedAddrs))
+	if len(retainedAddrs) == 0 {
+		return nil, errors.New("pool has no retained chunks")
+	}
 	randIndex := randInt(len(retainedAddrs))
 	randAddr := retainedAddrs[randIndex]
 	log.Printf("picked random address %s at index %d", randAddr, randIndex)

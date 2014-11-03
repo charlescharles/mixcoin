@@ -20,6 +20,7 @@ type RpcClient interface {
 	SendRawTransaction(*btcwire.MsgTx, bool) (*btcwire.ShaHash, error)
 	NotifyReceivedAsync([]btcutil.Address) btcrpcclient.FutureNotifyReceivedResult
 	ListUnspentMinMaxAddresses(int, int, []btcutil.Address) ([]btcjson.ListUnspentResult, error)
+	ImportPrivKey(*btcutil.WIF) error
 }
 
 var rpcClient RpcClient
