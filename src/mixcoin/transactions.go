@@ -73,5 +73,13 @@ func sendChunkWithFee(inputChunk *Chunk, dest string) error {
 	}
 	log.Printf("sent tx with tx hash: %v", txHash)
 
+	feeChunk.txInfo.receivedAmount -= cfg.TxFee
+	if feeChunk.txInfo <= 0 {
+		log.Printf("used up fee chunk")
+	} else {
+		log.Printf("adding fee chunk back to pool: %v", feeChunk)
+		addFeeChunkToPool(feeChunk)
+	}
+
 	return nil
 }

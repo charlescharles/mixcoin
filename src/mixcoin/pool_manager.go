@@ -100,6 +100,10 @@ func managePool() {
 	}
 }
 
+func addFeeChunkToPool(chunk *Chunk) {
+	addFeeChunkC <- chunk
+}
+
 func addChunkToPool(chunkMsg *ChunkMessage) {
 	newChunkC <- chunkMsg
 }
