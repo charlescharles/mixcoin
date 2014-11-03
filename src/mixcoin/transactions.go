@@ -18,7 +18,7 @@ func sendChunkWithFee(inputChunk *Chunk, dest string) error {
 
 	cfg := GetConfig()
 
-	feeChunk := getFeeChunk()
+	feeChunk := GetPool().GetRandomChunk(Reserve)
 	feeChunkAmt := feeChunk.txInfo.receivedAmount
 	feeTxOut, err := feeChunk.GetAsTxInput()
 

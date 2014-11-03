@@ -10,7 +10,7 @@ func mix(delay int, outAddr string) {
 	log.Printf("waiting %d blocks", delay)
 	time.Sleep(time.Duration(delay) * 10 * time.Minute)
 
-	outputChunk := getMixChunk()
+	outputChunk, err := GetPool().GetRandomChunk(Mixing)
 
 	log.Printf("sending output chunk: %v", outputChunk)
 

@@ -1,9 +1,9 @@
 package mixcoin
 
 import (
-	"github.com/conformal/btcjson"
 	"bytes"
 	"fmt"
+	"github.com/conformal/btcjson"
 )
 
 type Chunk struct {
@@ -24,6 +24,15 @@ type ChunkMessage struct {
 
 	MixAddr string `json:"mixAddr"`
 	Warrant string `json:"warrant"`
+}
+
+type PoolManager interface {
+	RegisterNewChunk(*ChunkMessage)
+	RegisterReserveChunks([]*Chunk)
+	RegisterReceived(string, *TxInfo, *btcwire.ShaHash)
+	GetRandomChunk(PoolType) (*Chunk, error)
+	GetReceivable() []btcutil.Address
+	Prune()
 }
 
 // NOTE: assumes it's a single coin

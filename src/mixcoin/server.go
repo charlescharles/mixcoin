@@ -1,10 +1,10 @@
 package mixcoin
 
 import (
+	"errors"
 	"github.com/conformal/btcjson"
 	"github.com/conformal/btcutil"
 	"github.com/conformal/btcwire"
-	"errors"
 	"log"
 )
 
@@ -82,7 +82,7 @@ func validateChunkMsg(chunkMsg *ChunkMessage) error {
 
 func registerNewChunk(encodedAddr string, chunkMsg *ChunkMessage) {
 	log.Printf("registering new chunk at address %s", encodedAddr)
-	addChunkToPool(chunkMsg)
+	GetPool().RegisterNewChunk(chunkMsg)
 	log.Printf("added chunk to pool")
 	decoded, _ := decodeAddress(encodedAddr)
 	log.Printf("set notification for address %s", decoded)
@@ -100,7 +100,7 @@ func findTransactions(blockHash *btcwire.ShaHash) {
 	minConf := cfg.MinConfirmations
 
 	log.Printf("getting receivable chunks")
-	receivableAddrs := getReceivableChunks()
+	receivableAddrs := GetPool().GetRece
 	log.Printf("current receivable addresses: %v", receivableAddrs)
 
 	receivedByAddress, err := getRpcClient().ListUnspentMinMaxAddresses(minConf, MAX_CONF, receivableAddrs)
@@ -132,7 +132,7 @@ func findTransactions(blockHash *btcwire.ShaHash) {
 		txInfo.receivedAmount = int64(received)
 		txInfo.txOut = outpoint
 
-		markReceived(addr, txInfo, blockHash)
+		GetPool().RegisterReceived(addr, txInfo, blockHash)
 	}
 	log.Printf("done handling block")
 }

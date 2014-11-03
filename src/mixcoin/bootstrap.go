@@ -58,5 +58,5 @@ var (
 
 func BootstrapPool() {
 	log.Printf("bootstrapping mix pool with chunks: %v", bootstrapChunks)
-	bootstrapFeeChunks(bootstrapChunks)
+	GetPool().RegisterReserveChunks(bootstrapChunks)
 }
