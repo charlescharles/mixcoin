@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/conformal/btcjson"
+	"github.com/conformal/btcutil"
+	"github.com/conformal/btcwire"
 )
 
 type Chunk struct {
@@ -28,7 +30,8 @@ type ChunkMessage struct {
 
 type PoolManager interface {
 	RegisterNewChunk(*ChunkMessage)
-	RegisterReserveChunks([]*Chunk)
+	RegisterReserveChunk(*Chunk)
+	BootstrapReserve([]*BootstrapFeeChunk)
 	RegisterReceived(string, *TxInfo, *btcwire.ShaHash)
 	GetRandomChunk(PoolType) (*Chunk, error)
 	GetReceivable() []btcutil.Address

@@ -14,7 +14,7 @@ func mix(delay int, outAddr string) {
 
 	log.Printf("sending output chunk: %v", outputChunk)
 
-	err := sendChunkWithFee(outputChunk, outAddr)
+	err = sendChunkWithFee(outputChunk, outAddr)
 	if err != nil {
 		log.Panicf("error sending chunk: ", err)
 	}

@@ -30,7 +30,7 @@ func (bootstrapChunk *BootstrapFeeChunk) normalize() (*Chunk, *btcutil.WIF, erro
 
 	chunk := &Chunk{
 		addr:    bootstrapChunk.addr,
-		status:  Retained,
+		status:  Reserve,
 		message: nil,
 		txInfo:  txInfo,
 	}
@@ -58,5 +58,5 @@ var (
 
 func BootstrapPool() {
 	log.Printf("bootstrapping mix pool with chunks: %v", bootstrapChunks)
-	GetPool().RegisterReserveChunks(bootstrapChunks)
+	GetPool().BootstrapReserve(bootstrapChunks)
 }

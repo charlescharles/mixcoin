@@ -18,7 +18,10 @@ func sendChunkWithFee(inputChunk *Chunk, dest string) error {
 
 	cfg := GetConfig()
 
-	feeChunk := GetPool().GetRandomChunk(Reserve)
+	feeChunk, err := GetPool().GetRandomChunk(Reserve)
+	if err != nil {
+		log.Printf("error getting fee chunk: %v", err)
+	}
 	feeChunkAmt := feeChunk.txInfo.receivedAmount
 	feeTxOut, err := feeChunk.GetAsTxInput()
 
@@ -74,11 +77,11 @@ func sendChunkWithFee(inputChunk *Chunk, dest string) error {
 	log.Printf("sent tx with tx hash: %v", txHash)
 
 	feeChunk.txInfo.receivedAmount -= cfg.TxFee
-	if feeChunk.txInfo <= 0 {
+	if feeChunk.txInfo.receivedAmount <= 0 {
 		log.Printf("used up fee chunk")
 	} else {
 		log.Printf("adding fee chunk back to pool: %v", feeChunk)
-		addFeeChunkToPool(feeChunk)
+		GetPool().RegisterReserveChunk(feeChunk)
 	}
 
 	return nil

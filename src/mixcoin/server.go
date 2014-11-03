@@ -100,7 +100,7 @@ func findTransactions(blockHash *btcwire.ShaHash) {
 	minConf := cfg.MinConfirmations
 
 	log.Printf("getting receivable chunks")
-	receivableAddrs := GetPool().GetRece
+	receivableAddrs := GetPool().GetReceivable()
 	log.Printf("current receivable addresses: %v", receivableAddrs)
 
 	receivedByAddress, err := getRpcClient().ListUnspentMinMaxAddresses(minConf, MAX_CONF, receivableAddrs)

@@ -1,13 +1,12 @@
 package mixcoin
 
 import (
-	"btcutil"
-	"btcwire"
 	"errors"
+	"github.com/conformal/btcutil"
+	"github.com/conformal/btcwire"
 	"log"
 	"math/big"
 	"math/rand"
-	"time"
 )
 
 var pool PoolManager
@@ -44,7 +43,7 @@ type PoolManagerDaemon struct {
 	requestReserveChunkC chan chan *Chunk
 	addFeeChunkC         chan *Chunk
 	bootstrapFeeC        chan []*BootstrapFeeChunk
-	prune                chan bool
+	pruneSig             chan bool
 
 	mixingAddrs   []string
 	retainedAddrs []string
@@ -61,7 +60,7 @@ func NewPoolManager() PoolManager {
 		requestReserveChunkC: make(chan chan *Chunk),
 		addFeeChunkC:         make(chan *Chunk),
 		bootstrapFeeC:        make(chan []*BootstrapFeeChunk),
-		prune:                make(chan bool),
+		pruneSig:             make(chan bool),
 	}
 
 	go poolMgr.manage()
@@ -72,39 +71,47 @@ func NewPoolManager() PoolManager {
 func (poolMgr *PoolManagerDaemon) manage() {
 	for {
 		select {
-		case newChunkMsg := <-newChunkC:
+		case newChunkMsg := <-poolMgr.newChunkC:
 			log.Printf("poolmgr handling new chunk: %v", newChunkMsg)
 			poolMgr.handleNew(newChunkMsg)
 
-		case receivedChunk := <-receivedChunkC:
+		case receivedChunk := <-poolMgr.receivedChunkC:
 			log.Printf("poolmgr handling received chunk: %v", receivedChunk)
 			poolMgr.handleReceived(receivedChunk.addr, receivedChunk.txInfo, receivedChunk.blockHash)
 
-		case ch := <-requestMixChunkC:
+		case ch := <-poolMgr.requestMixChunkC:
 			log.Printf("poolmgr handling chunk request: %v", ch)
 			ch <- poolMgr.popRandomMixingChunk()
 
-		case ch := <-requestReceivablesC:
+		case ch := <-poolMgr.requestReceivablesC:
 			log.Printf("poolmgr handling request for receivable chunks")
 			ch <- poolMgr.getReceivableChunks()
 
-		case ch := <-requestReserveChunkC:
+		case ch := <-poolMgr.requestReserveChunkC:
 			log.Printf("poolmgr handling request for fee chunk")
-			ch <- poolMgr.popRandomReserveChunk()
+			ret, err := poolMgr.popRandomReserveChunk()
+			if err != nil {
+				log.Printf("error popping rand reserve chunk: %v", err)
+			}
+			ch <- ret
 
-		case newFeeChunk := <-addFeeChunkC:
+		case newFeeChunk := <-poolMgr.addFeeChunkC:
 			log.Printf("poolmgr adding fee chunk")
 			poolMgr.addFeeChunk(newFeeChunk)
 
-		case <-prune:
+		case <-poolMgr.pruneSig:
 			log.Printf("poolmgr pruning")
 			poolMgr.prune()
 
-		case chunks := <-bootstrapFeeC:
+		case chunks := <-poolMgr.bootstrapFeeC:
 			log.Printf("poolmgr bootstrapping chunks")
 			poolMgr.handleBootstrap(chunks)
 		}
 	}
+}
+
+func (poolMgr *PoolManagerDaemon) BootstrapReserve(chunks []*BootstrapFeeChunk) {
+	poolMgr.bootstrapFeeC <- chunks
 }
 
 func (poolMgr *PoolManagerDaemon) RegisterReserveChunk(chunk *Chunk) {
@@ -134,10 +141,14 @@ func (poolMgr *PoolManagerDaemon) GetRandomChunk(poolType PoolType) (*Chunk, err
 	case Reserve:
 		poolMgr.requestReserveChunkC <- ch
 	default:
-		return nil, errors.New("unhandled pooltype: %v", poolType)
+		return nil, errors.New("unhandled pooltype")
 	}
 	output := <-ch
 	return output, nil
+}
+
+func (poolMgr *PoolManagerDaemon) Prune() {
+	poolMgr.pruneSig <- true
 }
 
 func (poolMgr *PoolManagerDaemon) bootstrapFeeChunks(chunks []*BootstrapFeeChunk) {
@@ -147,7 +158,7 @@ func (poolMgr *PoolManagerDaemon) bootstrapFeeChunks(chunks []*BootstrapFeeChunk
 
 func (poolMgr *PoolManagerDaemon) addFeeChunk(chunk *Chunk) {
 	log.Printf("adding fee chunk: %v", chunk)
-	chunk.status = Retained
+	chunk.status = Reserve
 	poolMgr.pool[chunk.addr] = chunk
 	poolMgr.retainedAddrs = append(poolMgr.retainedAddrs, chunk.addr)
 }
@@ -218,9 +229,9 @@ func (poolMgr *PoolManagerDaemon) handleNew(chunkMsg *ChunkMessage) {
 }
 
 func (poolMgr *PoolManagerDaemon) popRandomMixingChunk() *Chunk {
-	log.Printf("generating random index in [0, %d)", len(mixingAddrs))
-	randIndex := randInt(len(mixingAddrs))
-	randAddr := mixingAddrs[randIndex]
+	log.Printf("generating random index in [0, %d)", len(poolMgr.mixingAddrs))
+	randIndex := randInt(len(poolMgr.mixingAddrs))
+	randAddr := poolMgr.mixingAddrs[randIndex]
 	log.Printf("picked random address %s at index %d", randAddr, randIndex)
 
 	chunk := poolMgr.pool[randAddr]
@@ -229,7 +240,7 @@ func (poolMgr *PoolManagerDaemon) popRandomMixingChunk() *Chunk {
 
 	// remove from mixingAddrs
 	numMixingAddrs := len(poolMgr.mixingAddrs)
-	poolMgr.mixingAddrs[randIndex] = mixingAddrs[numMixingAddrs-1]
+	poolMgr.mixingAddrs[randIndex] = poolMgr.mixingAddrs[numMixingAddrs-1]
 	poolMgr.mixingAddrs = poolMgr.mixingAddrs[:numMixingAddrs-1]
 	return chunk
 }
@@ -248,7 +259,7 @@ func (poolMgr *PoolManagerDaemon) handleReceived(addr string, txInfo *TxInfo, bl
 	log.Printf("assigned txinfo")
 
 	if isFee(chunk.message.Nonce, blockHash, chunk.message.Fee) {
-		chunk.status = Retained
+		chunk.status = Reserve
 		poolMgr.retainedAddrs = append(poolMgr.retainedAddrs, addr)
 		return
 	}
@@ -278,7 +289,7 @@ func (poolMgr *PoolManagerDaemon) popRandomReserveChunk() (*Chunk, error) {
 	log.Printf("the chunk is still %v", chunk)
 
 	// remove from retainedAddrs
-	numRetainedAddrs := len(retainedAddrs)
+	numRetainedAddrs := len(poolMgr.retainedAddrs)
 	poolMgr.retainedAddrs[randIndex] = poolMgr.retainedAddrs[numRetainedAddrs-1]
 	poolMgr.retainedAddrs = poolMgr.retainedAddrs[:numRetainedAddrs-1]
 	return chunk, nil
