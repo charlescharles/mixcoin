@@ -3,19 +3,20 @@ package mixcoin
 import (
 	"github.com/conformal/btcjson"
 	"github.com/conformal/btcutil"
-	"github.com/conformal/btcwire"
 	"log"
 )
 
 func send(dest string) error {
 	cfg := GetConfig()
 
-	feeUtxo, err := pool.Get(Reserve)
+	feeItem, err := pool.Get(Reserve)
+	feeUtxo := feeItem.(*Utxo)
 	if err != nil {
 		log.Printf("error getting input utxo: %v", err)
 	}
 
-	inputUtxo, err := pool.Get(Mixing)
+	inputItem, err := pool.Get(Mixing)
+	inputUtxo := inputItem.(*Utxo)
 	if err != nil {
 		log.Printf("error getting input utxo: %v", err)
 	}
@@ -36,7 +37,7 @@ func send(dest string) error {
 	destAmt := btcutil.Amount(cfg.ChunkSize)
 	changeAmt := feeUtxo.amount + inputUtxo.amount - destAmt - feeAmt
 
-	inputs := []btcjson.TransactionInput{*feeTxOut, *inputTxOut}
+	inputs := []btcjson.TransactionInput{*feeTx, *inputTx}
 
 	amounts := map[btcutil.Address]btcutil.Amount{
 		destAddr:   destAmt,

@@ -1,11 +1,12 @@
 package mixcoin
 
 import (
-	"errors"
 	"github.com/conformal/btcjson"
 	"github.com/conformal/btcutil"
 	"github.com/conformal/btcwire"
 	"log"
+	"math/big"
+	"math/rand"
 )
 
 const (
@@ -45,7 +46,7 @@ func handleChunkRequest(chunkMsg *ChunkMessage) error {
 		return err
 	}
 
-	encodedAddr := (*addr).EncodeAddress()
+	encodedAddr := addr.EncodeAddress()
 	log.Printf("generated address: %s", encodedAddr)
 
 	chunkMsg.MixAddr = encodedAddr
@@ -75,22 +76,30 @@ func onBlockConnected(blockHash *btcwire.ShaHash, height int32) {
 	go findTransactions(blockHash, int(height))
 }
 
+/**
 func prune() {
 	pool.Filter(func(msg *ChunkMessage) bool {
-		return msg.SendBy <= blockchainHe
+		return msg.SendBy <= blockchainHeight
 	})
 }
-
+*/
 func findTransactions(blockHash *btcwire.ShaHash, height int) {
-	prune()
+	//prune()
 
 	cfg := GetConfig()
 	minConf := cfg.MinConfirmations
 
 	log.Printf("getting receivable chunks")
-	receivableAddrs := pool.ReceivingKeys()
-	log.Printf("current receivable addresses: %v", receivableAddrs)
+	addrs := pool.ReceivingKeys()
 
+	var receivableAddrs []btcutil.Address
+	for _, addr := range addrs {
+		decoded, err := decodeAddress(addr)
+		if err != nil {
+			log.Printf("error decoding address: %v", err)
+		}
+		receivableAddrs = append(receivableAddrs, decoded)
+	}
 	receivedByAddress, err := rpc.ListUnspentMinMaxAddresses(minConf, MAX_CONF, receivableAddrs)
 	if err != nil {
 		log.Panicf("error listing unspent by address: %v", err)
@@ -98,7 +107,7 @@ func findTransactions(blockHash *btcwire.ShaHash, height int) {
 	log.Printf("received transactions: %v", receivedByAddress)
 
 	// make addr -> utxo map of received txs
-	received := make(map[string]*TxInfo)
+	received := make(map[string]*Utxo)
 	for _, result := range receivedByAddress {
 		if !isValidReceivedResult(result) {
 			continue
@@ -109,7 +118,7 @@ func findTransactions(blockHash *btcwire.ShaHash, height int) {
 			log.Panicf("invalid tx amount: %v", err)
 		}
 
-		received[addr] = &Utxo{
+		received[result.Address] = &Utxo{
 			addr:   result.Address,
 			amount: amount,
 			txId:   result.TxId,
@@ -124,7 +133,8 @@ func findTransactions(blockHash *btcwire.ShaHash, height int) {
 
 	// get the chunk messages, move to pool
 	chunkMsgs := pool.Scan(receivedAddrs)
-	for _, msg := range chunkMsgs {
+	for _, item := range chunkMsgs {
+		msg := item.(*ChunkMessage)
 		utxo := received[msg.MixAddr]
 		if isFee(msg.Nonce, blockHash, msg.Fee) {
 			pool.Put(Reserve, utxo)
@@ -149,7 +159,7 @@ func isFee(nonce int64, hash *btcwire.ShaHash, feeBips int) bool {
 	return rng.Float64() <= fee
 }
 
-func isValidReceivedResult(result *btcjson.ListUnspentResult) bool {
+func isValidReceivedResult(result btcjson.ListUnspentResult) bool {
 	cfg := GetConfig()
 
 	// ListUnspentResult.Amount is a float64 in BTC

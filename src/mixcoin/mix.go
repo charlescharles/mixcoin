@@ -18,7 +18,7 @@ func NewMix() *Mix {
 }
 
 func (m *Mix) Put(msg *ChunkMessage) {
-	delay := genDelay(msg.ReturnBy)
+	delay := delay(msg.ReturnBy)
 	go m.signal(delay, msg.OutAddr)
 }
 
@@ -30,13 +30,13 @@ func (m *Mix) signal(delay int, addr string) {
 func (m *Mix) run() {
 	for {
 		select {
-		case addr := <-sigc:
+		case addr := <-m.sigc:
 			send(addr)
 		}
 	}
 }
 
-func generateDelay(returnBy int) int {
+func delay(returnBy int) int {
 	log.Printf("generating delay with returnby %d and currheight %d", returnBy, blockchainHeight)
 	rand := randInt(returnBy - 1 - blockchainHeight)
 	log.Printf("generated delay %v", rand)

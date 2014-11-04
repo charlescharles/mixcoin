@@ -2,10 +2,10 @@ package mixcoin
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
-	"github.com/conformal/btcjson"
 	"github.com/conformal/btcutil"
-	"github.com/conformal/btcwire"
+	"log"
 )
 
 type Utxo struct {

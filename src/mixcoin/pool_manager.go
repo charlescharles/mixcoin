@@ -1,4 +1,8 @@
-package main
+package mixcoin
+
+import (
+	"errors"
+)
 
 type PoolType int
 
@@ -22,7 +26,7 @@ func NewPoolManager() *PoolManager {
 	}
 }
 
-func (p *PoolManager) Put(t PoolType, item *PoolItem) {
+func (p *PoolManager) Put(t PoolType, item PoolItem) {
 	switch t {
 	case Receivable:
 		p.receivable.Put(item)
@@ -33,7 +37,7 @@ func (p *PoolManager) Put(t PoolType, item *PoolItem) {
 	}
 }
 
-func (p *PoolManager) Get(t PoolType) (*PoolItem, error) {
+func (p *PoolManager) Get(t PoolType) (PoolItem, error) {
 	switch t {
 	case Receivable:
 		return nil, errors.New("cannot get poolitem from receivable pool")
@@ -41,6 +45,8 @@ func (p *PoolManager) Get(t PoolType) (*PoolItem, error) {
 		return p.mixing.Get()
 	case Reserve:
 		return p.reserve.Get()
+	default:
+		return nil, errors.New("unhandled pooltype")
 	}
 }
 
@@ -48,10 +54,10 @@ func (p *PoolManager) ReceivingKeys() []string {
 	return p.receivable.Keys()
 }
 
-func (p *PoolManager) Scan(keys []string) []*PoolItem {
+func (p *PoolManager) Scan(keys []string) []PoolItem {
 	return p.receivable.Scan(keys)
 }
 
-func (p *PoolManager) Filter(f func(*PoolItem) bool) {
+func (p *PoolManager) Filter(f func(PoolItem) bool) {
 	p.receivable.Filter(f)
 }

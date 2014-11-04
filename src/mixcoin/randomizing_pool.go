@@ -1,5 +1,9 @@
 package mixcoin
 
+import (
+	"errors"
+)
+
 type PoolItem interface {
 	Key() string
 }
@@ -24,7 +28,7 @@ func (p *RandomizingPool) Put(item PoolItem) {
 	p.putc <- item
 }
 
-func (p *RandomizingPool) Get() (*PoolItem, error) {
+func (p *RandomizingPool) Get() (PoolItem, error) {
 	ch := make(chan PoolItem)
 	p.getc <- ch
 	ret := <-ch
@@ -36,7 +40,7 @@ func (p *RandomizingPool) Get() (*PoolItem, error) {
 
 func (p *RandomizingPool) run() {
 	var keys []string
-	table := make(map[string]*PoolItem)
+	table := make(map[string]PoolItem)
 
 	for {
 		select {

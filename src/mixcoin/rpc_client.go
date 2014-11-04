@@ -43,11 +43,11 @@ func NewRpcClient() RpcClient {
 		DisableTLS:   false,
 	}
 
-	ntfnHandlers := btcrpcclient.NotificationHandlers{
+	ntfnHandlers := &btcrpcclient.NotificationHandlers{
 		OnBlockConnected: onBlockConnected,
 	}
 
-	client, err := btcrpcclient.New(config, ntfnHandlers)
+	client, err := btcrpcclient.New(connCfg, ntfnHandlers)
 
 	if err != nil {
 		log.Printf("error creating rpc client: %v", err)
