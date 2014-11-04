@@ -36,6 +36,7 @@ func TestMix(t *testing.T) {
 
 	// send a chunk msg request
 	mockClient.On("GetNewAddress").Return(mixAddr1, nil)
+	mockClient.On("GetBestBlock").Return(blockHash1, int32(306328), nil)
 
 	err := handleChunkRequest(chunkMsg1)
 

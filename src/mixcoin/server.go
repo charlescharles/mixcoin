@@ -68,6 +68,12 @@ func validateChunkMsg(chunkMsg *ChunkMessage) error {
 		return errors.New("Invalid number of confirmations")
 	}
 
+	height, err := getBlockchainHeight()
+	if err != nil {
+		return err
+	}
+	blockchainHeight = height
+
 	if chunkMsg.SendBy-blockchainHeight > cfg.MaxFutureChunkTime {
 		return errors.New("sendby time too far in the future")
 	}

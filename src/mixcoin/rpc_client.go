@@ -14,6 +14,7 @@ type RpcClient interface {
 	WalletPassphrase(string, int64) error
 	CreateEncryptedWallet(string) error
 	GetNewAddress() (btcutil.Address, error)
+	GetBestBlock() (*btcwire.ShaHash, int32, error)
 	CreateRawTransaction([]btcjson.TransactionInput, map[btcutil.Address]btcutil.Amount) (*btcwire.MsgTx, error)
 	SignRawTransaction(*btcwire.MsgTx) (*btcwire.MsgTx, bool, error)
 	SendRawTransaction(*btcwire.MsgTx, bool) (*btcwire.ShaHash, error)
@@ -95,4 +96,15 @@ func getNewAddress() (*btcutil.Address, error) {
 	}
 	*/
 	return &addr, nil
+}
+
+// TODO only update occasionally; no need to check every time
+func getBlockchainHeight() (int, error) {
+	log.Printf("getting blockchain height")
+	_, height32, err := getRpcClient().GetBestBlock()
+	if err != nil {
+		return 1, err
+	}
+	log.Printf("got blockchain height: %v", height32)
+	return int(height32), nil
 }

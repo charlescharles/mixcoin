@@ -66,6 +66,11 @@ func (o *MockRpcClient) ListUnspentMinMaxAddresses(min int, max int, addrs []btc
 	return args.Get(0).([]btcjson.ListUnspentResult), args.Error(1)
 }
 
+func (o *MockRpcClient) GetBestBlock() (*btcwire.ShaHash, int32, error) {
+	args := o.Mock.Called()
+	return args.Get(0).(*btcwire.ShaHash), args.Get(1).(int32), args.Error(2)
+}
+
 func mockNewRpcClient(config *btcrpcclient.ConnConfig, ntfnHandlers *btcrpcclient.NotificationHandlers) RpcClient {
 	log.Printf("creating mock rpc client")
 	client := new(MockRpcClient)
