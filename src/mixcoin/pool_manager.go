@@ -32,3 +32,22 @@ func (p *PoolManager) Put(t PoolType, item *PoolItem) {
 		p.reserve.Put(item)
 	}
 }
+
+func (p *PoolManager) Get(t PoolType) (*PoolItem, error) {
+	switch t {
+	case Receivable:
+		return nil, errors.New("cannot get poolitem from receivable pool")
+	case Mixing:
+		return p.mixing.Get()
+	case Reserve:
+		return p.reserve.Get()
+	}
+}
+
+func (p *PoolManager) ReceivingKeys() []string {
+	return p.receivable.Keys()
+}
+
+func (p *PoolManager) Scan(keys []string) []*PoolItem {
+	return p.receivable.Scan(keys)
+}
