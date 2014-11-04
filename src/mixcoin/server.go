@@ -14,13 +14,15 @@ const (
 
 var (
 	blockchainHeight int
+	pool             *PoolManager
 )
 
 func StartMixcoinServer() {
 	log.Println("starting mixcoin server")
 
+	pool = NewPoolManager()
+
 	StartRpcClient()
-	StartPoolManager()
 	BootstrapPool()
 }
 
@@ -32,8 +34,6 @@ func handleChunkRequest(chunkMsg *ChunkMessage) error {
 		log.Printf("Invalid chunk request: %v", err)
 		return err
 	}
-
-	log.Printf("validated chunk request")
 
 	log.Printf("generating new address")
 	addr, err := getNewAddress()
@@ -83,16 +83,16 @@ func validateChunkMsg(chunkMsg *ChunkMessage) error {
 	if chunkMsg.ReturnBy-chunkMsg.SendBy < 2 {
 		return errors.New("not enough time between sendby and returnby")
 	}
+	log.Printf("validated block")
 	return nil
 }
 
 func registerNewChunk(encodedAddr string, chunkMsg *ChunkMessage) {
 	log.Printf("registering new chunk at address %s", encodedAddr)
-	GetPool().RegisterNewChunk(chunkMsg)
+	pool.Put(Receivable, chunkMsg)
 	log.Printf("added chunk to pool")
 	decoded, _ := decodeAddress(encodedAddr)
 	log.Printf("set notification for address %s", decoded)
-	//getRpcClient().NotifyReceivedAsync([]btcutil.Address{decoded})
 }
 
 func onBlockConnected(blockHash *btcwire.ShaHash, height int32) {
@@ -109,7 +109,7 @@ func findTransactions(blockHash *btcwire.ShaHash, height int) {
 	minConf := cfg.MinConfirmations
 
 	log.Printf("getting receivable chunks")
-	receivableAddrs := GetPool().GetReceivable()
+	receivableAddrs := pool.ReceivingKeys()
 	log.Printf("current receivable addresses: %v", receivableAddrs)
 
 	receivedByAddress, err := getRpcClient().ListUnspentMinMaxAddresses(minConf, MAX_CONF, receivableAddrs)
@@ -118,32 +118,26 @@ func findTransactions(blockHash *btcwire.ShaHash, height int) {
 	}
 	log.Printf("received transactions: %v", receivedByAddress)
 
+	// make addr -> utxo map of received txs
 	received := make(map[string]*TxInfo)
 	for _, result := range receivedByAddress {
-		addr := result.Address
+		amount, err := btcutil.NewAmount(result.Amount)
 
-		txInfo, exists := received[addr]
-		if !exists {
-			received[addr] = &TxInfo{}
-			txInfo = received[addr]
-		}
-
-		txHash, err := btcwire.NewShaHashFromStr(result.TxId)
 		if err != nil {
-			log.Printf("error parsing tx sha hash: %v", err)
+			log.Panicf("invalid tx amount: %v", err)
 		}
-		outpoint := &btcwire.OutPoint{
-			*txHash,
-			result.Vout,
-		}
-		// result.Amount is float64
-		received, err := btcutil.NewAmount(result.Amount)
-		txInfo.receivedAmount = int64(received)
-		txInfo.txOut = outpoint
 
-		GetPool().RegisterReceived(addr, txInfo, blockHash)
+		received[addr] = &Utxo{
+			addr:   result.Address,
+			amount: amount,
+			txId:   result.TxId,
+			index:  int(result.Vout),
+		}
 	}
-	log.Printf("done handling block")
+
+	// get the chunk messages
+	chunkMsgs := pool.
+		log.Printf("done handling block")
 }
 
 func isValidReceivedResult(result *btcjson.ListUnspentResult) bool {

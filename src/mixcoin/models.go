@@ -8,11 +8,15 @@ import (
 	"github.com/conformal/btcwire"
 )
 
-type Chunk struct {
-	status  PoolType
-	message *ChunkMessage
-	txInfo  *TxInfo
-	addr    string // the mix/escrow address
+type Utxo struct {
+	addr   string
+	amount btcutil.Amount
+	txId   string
+	index  int
+}
+
+func (u *Utxo) Key() string {
+	return u.addr
 }
 
 type ChunkMessage struct {
@@ -28,22 +32,8 @@ type ChunkMessage struct {
 	Warrant string `json:"warrant"`
 }
 
-type PoolManager interface {
-	RegisterNewChunk(*ChunkMessage)
-	RegisterReserveChunk(*Chunk)
-	BootstrapReserve([]*BootstrapFeeChunk)
-	RegisterReceived(string, *TxInfo, *btcwire.ShaHash)
-	GetRandomChunk(PoolType) (*Chunk, error)
-	GetReceivable() []btcutil.Address
-	Prune(int)
-}
-
-// NOTE: assumes it's a single coin
-func (chunk *Chunk) GetAsTxInput() (*btcjson.TransactionInput, error) {
-	hash := chunk.txInfo.txOut.Hash
-	index := chunk.txInfo.txOut.Index
-
-	return &btcjson.TransactionInput{hash.String(), index}, nil
+func (c *ChunkMessage) Key() string {
+	return c.MixAddr
 }
 
 func (chunkMsg *ChunkMessage) String() string {
