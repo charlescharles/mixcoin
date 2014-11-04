@@ -21,12 +21,8 @@ func mix(delay int, outAddr string) {
 }
 
 func generateDelay(returnBy int) int {
-	currHeight, err := getBlockchainHeight()
-	if err != nil {
-		log.Panicf("error getting blockchain height: %v", err)
-	}
-	log.Printf("generating delay with returnby %d and currheight %d", returnBy, currHeight)
-	rand := randInt(returnBy - 1 - currHeight)
+	log.Printf("generating delay with returnby %d and currheight %d", returnBy, blockchainHeight)
+	rand := randInt(returnBy - 1 - blockchainHeight)
 	log.Printf("generated delay %v", rand)
 	return 0
 	//return currHeight + rand

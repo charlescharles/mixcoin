@@ -35,7 +35,7 @@ type PoolManager interface {
 	RegisterReceived(string, *TxInfo, *btcwire.ShaHash)
 	GetRandomChunk(PoolType) (*Chunk, error)
 	GetReceivable() []btcutil.Address
-	Prune()
+	Prune(int)
 }
 
 // NOTE: assumes it's a single coin

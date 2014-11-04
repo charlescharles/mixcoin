@@ -2,17 +2,23 @@ package mixcoin
 
 import (
 	"github.com/conformal/btcjson"
+	"github.com/conformal/btcrpcclient"
 	"github.com/conformal/btcutil"
 	"github.com/conformal/btcwire"
 	"github.com/conformal/btcws"
 	"github.com/stretchr/testify/mock"
-	"testing"
+	"log"
 )
 
 type MockRpcClient struct {
 	mock.Mock
 	newBlockHandler func(hash *btcwire.ShaHash, height int32)
 	recvTxHandler   func(transaction *btcutil.Tx, details *btcws.BlockDetails)
+}
+
+func (o *MockRpcClient) ImportPrivKey(wif *btcutil.WIF) error {
+	args := o.Mock.Called()
+	return args.Error(0)
 }
 
 func (o *MockRpcClient) NotifyBlocks() error {
@@ -35,11 +41,6 @@ func (o *MockRpcClient) GetNewAddress() (btcutil.Address, error) {
 	return args.Get(0).(btcutil.Address), args.Error(1)
 }
 
-func (o *MockRpcClient) GetBestBlock() (*btcwire.ShaHash, int32, error) {
-	args := o.Mock.Called()
-	return args.Get(0).(*btcwire.ShaHash), args.Get(1).(int32), args.Error(2)
-}
-
 func (o *MockRpcClient) CreateRawTransaction(inputs []btcjson.TransactionInput, amounts map[btcutil.Address]btcutil.Amount) (*btcwire.MsgTx, error) {
 	args := o.Mock.Called(inputs, amounts)
 	return args.Get(0).(*btcwire.MsgTx), args.Error(1)
@@ -52,7 +53,7 @@ func (o *MockRpcClient) SignRawTransaction(tx *btcwire.MsgTx) (*btcwire.MsgTx, b
 
 func (o *MockRpcClient) SendRawTransaction(tx *btcwire.MsgTx, allowHighFees bool) (*btcwire.ShaHash, error) {
 	args := o.Mock.Called(tx, allowHighFees)
-	return args.Get(0).(*btcwire.MsgTx), args.Error(1)
+	return args.Get(0).(*btcwire.ShaHash), args.Error(1)
 }
 
 func (o *MockRpcClient) NotifyReceivedAsync(addrs []btcutil.Address) btcrpcclient.FutureNotifyReceivedResult {

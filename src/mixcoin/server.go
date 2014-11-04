@@ -12,6 +12,10 @@ const (
 	MAX_CONF = 9999
 )
 
+var (
+	blockchainHeight int
+)
+
 func StartMixcoinServer() {
 	log.Println("starting mixcoin server")
 
@@ -64,14 +68,10 @@ func validateChunkMsg(chunkMsg *ChunkMessage) error {
 		return errors.New("Invalid number of confirmations")
 	}
 
-	currHeight, err := getBlockchainHeight()
-	if err != nil {
-		return err
-	}
-	if chunkMsg.SendBy-currHeight > cfg.MaxFutureChunkTime {
+	if chunkMsg.SendBy-blockchainHeight > cfg.MaxFutureChunkTime {
 		return errors.New("sendby time too far in the future")
 	}
-	if chunkMsg.SendBy <= currHeight {
+	if chunkMsg.SendBy <= blockchainHeight {
 		return errors.New("sendby time has already passed")
 	}
 	if chunkMsg.ReturnBy-chunkMsg.SendBy < 2 {
@@ -86,16 +86,19 @@ func registerNewChunk(encodedAddr string, chunkMsg *ChunkMessage) {
 	log.Printf("added chunk to pool")
 	decoded, _ := decodeAddress(encodedAddr)
 	log.Printf("set notification for address %s", decoded)
-	getRpcClient().NotifyReceivedAsync([]btcutil.Address{decoded})
+	//getRpcClient().NotifyReceivedAsync([]btcutil.Address{decoded})
 }
 
 func onBlockConnected(blockHash *btcwire.ShaHash, height int32) {
 	log.Printf("new block connected with hash %v, height %d", blockHash, height)
 
-	go findTransactions(blockHash)
+	blockchainHeight = int(height)
+	go findTransactions(blockHash, int(height))
 }
 
-func findTransactions(blockHash *btcwire.ShaHash) {
+func findTransactions(blockHash *btcwire.ShaHash, height int) {
+	GetPool().Prune(height)
+
 	cfg := GetConfig()
 	minConf := cfg.MinConfirmations
 

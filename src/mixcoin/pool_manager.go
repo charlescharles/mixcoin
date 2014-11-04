@@ -43,7 +43,7 @@ type PoolManagerDaemon struct {
 	requestReserveChunkC chan chan *Chunk
 	addFeeChunkC         chan *Chunk
 	bootstrapFeeC        chan []*BootstrapFeeChunk
-	pruneSig             chan bool
+	pruneSig             chan int
 
 	mixingAddrs   []string
 	retainedAddrs []string
@@ -60,7 +60,7 @@ func NewPoolManager() PoolManager {
 		requestReserveChunkC: make(chan chan *Chunk),
 		addFeeChunkC:         make(chan *Chunk),
 		bootstrapFeeC:        make(chan []*BootstrapFeeChunk),
-		pruneSig:             make(chan bool),
+		pruneSig:             make(chan int),
 	}
 
 	go poolMgr.manage()
@@ -99,9 +99,9 @@ func (poolMgr *PoolManagerDaemon) manage() {
 			log.Printf("poolmgr adding fee chunk")
 			poolMgr.addFeeChunk(newFeeChunk)
 
-		case <-poolMgr.pruneSig:
+		case height := <-poolMgr.pruneSig:
 			log.Printf("poolmgr pruning")
-			poolMgr.prune()
+			poolMgr.prune(height)
 
 		case chunks := <-poolMgr.bootstrapFeeC:
 			log.Printf("poolmgr bootstrapping chunks")
@@ -147,8 +147,8 @@ func (poolMgr *PoolManagerDaemon) GetRandomChunk(poolType PoolType) (*Chunk, err
 	return output, nil
 }
 
-func (poolMgr *PoolManagerDaemon) Prune() {
-	poolMgr.pruneSig <- true
+func (poolMgr *PoolManagerDaemon) Prune(height int) {
+	poolMgr.pruneSig <- height
 }
 
 func (poolMgr *PoolManagerDaemon) bootstrapFeeChunks(chunks []*BootstrapFeeChunk) {
@@ -204,10 +204,10 @@ func (poolMgr *PoolManagerDaemon) handleBootstrap(bootstrapChunks []*BootstrapFe
 	log.Printf("with length %v", len(poolMgr.retainedAddrs))
 }
 
-func (poolMgr *PoolManagerDaemon) prune() {
+func (poolMgr *PoolManagerDaemon) prune(height int) {
 	var expiredAddrs []string
 	for addr, chunk := range poolMgr.pool {
-		if chunk.status == Receivable && isExpired(chunk) {
+		if chunk.status == Receivable && isExpired(chunk, height) {
 			log.Printf("found expired chunk: %s", addr)
 			expiredAddrs = append(expiredAddrs, addr)
 		}
@@ -308,9 +308,9 @@ func isFee(nonce int64, hash *btcwire.ShaHash, feeBips int) bool {
 	return rng.Float64() <= fee
 }
 
-func isExpired(chunk *Chunk) bool {
-	currHeight, _ := getBlockchainHeight()
-	isPastExpiry := chunk.message.SendBy <= currHeight
+func isExpired(chunk *Chunk, height int) bool {
+	//currHeight, _ := getBlockchainHeight()
+	isPastExpiry := chunk.message.SendBy <= height
 
 	return isPastExpiry
 }
