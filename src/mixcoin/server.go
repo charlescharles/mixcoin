@@ -103,7 +103,7 @@ func onBlockConnected(blockHash *btcwire.ShaHash, height int32) {
 }
 
 func findTransactions(blockHash *btcwire.ShaHash, height int) {
-	GetPool().Prune(height)
+	//GetPool().Prune(height)
 
 	cfg := GetConfig()
 	minConf := cfg.MinConfirmations
@@ -135,9 +135,35 @@ func findTransactions(blockHash *btcwire.ShaHash, height int) {
 		}
 	}
 
+	var receivedAddrs []string
+	for addr, _ := range received {
+		receivedAddrs = append(receivedAddrs, addr)
+	}
+
 	// get the chunk messages
-	chunkMsgs := pool.
-		log.Printf("done handling block")
+	chunkMsgs := pool.Scan(receivedAddrs)
+	for _, msg := range chunkMsgs {
+		utxo := received[msg.MixAddr]
+		if isFee(msg.Nonce, blockHash, msg.Fee) {
+			pool.Put(Reserve, utxo)
+		} else {
+			pool.Put(Mixing, utxo)
+		}
+	}
+	log.Printf("done handling block")
+}
+
+func isFee(nonce int64, hash *btcwire.ShaHash, feeBips int) bool {
+	bigIntHash := big.NewInt(0)
+	bigIntHash.SetBytes(hash.Bytes())
+	hashInt := bigIntHash.Int64()
+
+	gen := nonce | hashInt
+	fee := float64(feeBips) * 1.0e4
+
+	source := rand.NewSource(gen)
+	rng := rand.New(source)
+	return rng.Float64() <= fee
 }
 
 func isValidReceivedResult(result *btcjson.ListUnspentResult) bool {
