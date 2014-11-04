@@ -15,14 +15,17 @@ const (
 var (
 	blockchainHeight int
 	pool             *PoolManager
+	rpc              RpcClient
+	mix              *Mix
 )
 
 func StartMixcoinServer() {
 	log.Println("starting mixcoin server")
 
 	pool = NewPoolManager()
+	rpc = NewRpcClient()
+	mix = NewMix()
 
-	StartRpcClient()
 	BootstrapPool()
 }
 
@@ -54,36 +57,6 @@ func handleChunkRequest(chunkMsg *ChunkMessage) error {
 	}
 
 	registerNewChunk(encodedAddr, chunkMsg)
-
-	return nil
-}
-
-func validateChunkMsg(chunkMsg *ChunkMessage) error {
-	cfg := GetConfig()
-
-	if chunkMsg.Val != cfg.ChunkSize {
-		return errors.New("Invalid chunk size")
-	}
-	if chunkMsg.Confirm < cfg.MinConfirmations {
-		return errors.New("Invalid number of confirmations")
-	}
-
-	height, err := getBlockchainHeight()
-	if err != nil {
-		return err
-	}
-	blockchainHeight = height
-
-	if chunkMsg.SendBy-blockchainHeight > cfg.MaxFutureChunkTime {
-		return errors.New("sendby time too far in the future")
-	}
-	if chunkMsg.SendBy <= blockchainHeight {
-		return errors.New("sendby time has already passed")
-	}
-	if chunkMsg.ReturnBy-chunkMsg.SendBy < 2 {
-		return errors.New("not enough time between sendby and returnby")
-	}
-	log.Printf("validated block")
 	return nil
 }
 
@@ -102,8 +75,14 @@ func onBlockConnected(blockHash *btcwire.ShaHash, height int32) {
 	go findTransactions(blockHash, int(height))
 }
 
+func prune() {
+	pool.Filter(func(msg *ChunkMessage) bool {
+		return msg.SendBy <= blockchainHe
+	})
+}
+
 func findTransactions(blockHash *btcwire.ShaHash, height int) {
-	//GetPool().Prune(height)
+	prune()
 
 	cfg := GetConfig()
 	minConf := cfg.MinConfirmations
@@ -112,7 +91,7 @@ func findTransactions(blockHash *btcwire.ShaHash, height int) {
 	receivableAddrs := pool.ReceivingKeys()
 	log.Printf("current receivable addresses: %v", receivableAddrs)
 
-	receivedByAddress, err := getRpcClient().ListUnspentMinMaxAddresses(minConf, MAX_CONF, receivableAddrs)
+	receivedByAddress, err := rpc.ListUnspentMinMaxAddresses(minConf, MAX_CONF, receivableAddrs)
 	if err != nil {
 		log.Panicf("error listing unspent by address: %v", err)
 	}
@@ -121,8 +100,11 @@ func findTransactions(blockHash *btcwire.ShaHash, height int) {
 	// make addr -> utxo map of received txs
 	received := make(map[string]*TxInfo)
 	for _, result := range receivedByAddress {
-		amount, err := btcutil.NewAmount(result.Amount)
+		if !isValidReceivedResult(result) {
+			continue
+		}
 
+		amount, err := btcutil.NewAmount(result.Amount)
 		if err != nil {
 			log.Panicf("invalid tx amount: %v", err)
 		}
@@ -140,7 +122,7 @@ func findTransactions(blockHash *btcwire.ShaHash, height int) {
 		receivedAddrs = append(receivedAddrs, addr)
 	}
 
-	// get the chunk messages
+	// get the chunk messages, move to pool
 	chunkMsgs := pool.Scan(receivedAddrs)
 	for _, msg := range chunkMsgs {
 		utxo := received[msg.MixAddr]
@@ -148,6 +130,7 @@ func findTransactions(blockHash *btcwire.ShaHash, height int) {
 			pool.Put(Reserve, utxo)
 		} else {
 			pool.Put(Mixing, utxo)
+			mix.Put(msg)
 		}
 	}
 	log.Printf("done handling block")

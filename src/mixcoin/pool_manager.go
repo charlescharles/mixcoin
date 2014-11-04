@@ -51,3 +51,7 @@ func (p *PoolManager) ReceivingKeys() []string {
 func (p *PoolManager) Scan(keys []string) []*PoolItem {
 	return p.receivable.Scan(keys)
 }
+
+func (p *PoolManager) Filter(f func(*PoolItem) bool) {
+	p.receivable.Filter(f)
+}

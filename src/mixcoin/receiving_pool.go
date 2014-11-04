@@ -1,16 +1,18 @@
 package mixcoin
 
 type ReceivingPool struct {
-	putc  chan PoolItem
-	recvc chan []string
-	scanc chan []*PoolItem
+	putc    chan PoolItem
+	recvc   chan []string
+	scanc   chan []*PoolItem
+	filterc chan func(*PoolItem) bool
 }
 
 func NewReceivingPool() *ReceivingPool {
 	p := &ReceivingPool{
-		putc:  make(chan PoolItem),
-		recvc: make(chan []string),
-		scanc: make(chan []*PoolItem),
+		putc:    make(chan PoolItem),
+		recvc:   make(chan []string),
+		scanc:   make(chan []*PoolItem),
+		filterc: make(chan func(*PoolItem) bool),
 	}
 	go p.run()
 	return p
@@ -29,6 +31,10 @@ func (p *ReceivingPool) Keys() []string {
 	ch := make(chan []string)
 	p.keysc <- ch
 	return <-ch
+}
+
+func (p *ReceivingPool) Filter(f func(*PoolItem) bool) {
+	p.filterc <- f
 }
 
 func (p *ReceivingPool) run() {
@@ -56,6 +62,17 @@ func (p *ReceivingPool) run() {
 				}
 			}
 			p.scanc <- items
+
+		case f := <-p.filterc:
+			var remove []string
+			for key, item := range table {
+				if f(item) {
+					remove = append(remove, key)
+				}
+			}
+			for _, key := range remove {
+				delete(table, key)
+			}
 		}
 	}
 }

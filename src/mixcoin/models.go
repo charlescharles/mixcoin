@@ -55,3 +55,32 @@ func (chunkMsg *ChunkMessage) String() string {
 
 	return buffer.String()
 }
+
+func validateChunkMsg(chunkMsg *ChunkMessage) error {
+	cfg := GetConfig()
+
+	if chunkMsg.Val != cfg.ChunkSize {
+		return errors.New("Invalid chunk size")
+	}
+	if chunkMsg.Confirm < cfg.MinConfirmations {
+		return errors.New("Invalid number of confirmations")
+	}
+
+	height, err := getBlockchainHeight()
+	if err != nil {
+		return err
+	}
+	blockchainHeight = height
+
+	if chunkMsg.SendBy-blockchainHeight > cfg.MaxFutureChunkTime {
+		return errors.New("sendby time too far in the future")
+	}
+	if chunkMsg.SendBy <= blockchainHeight {
+		return errors.New("sendby time has already passed")
+	}
+	if chunkMsg.ReturnBy-chunkMsg.SendBy < 2 {
+		return errors.New("not enough time between sendby and returnby")
+	}
+	log.Printf("validated block")
+	return nil
+}

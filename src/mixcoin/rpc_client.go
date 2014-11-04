@@ -23,21 +23,7 @@ type RpcClient interface {
 	ImportPrivKey(*btcutil.WIF) error
 }
 
-var rpcClient RpcClient
-
-func getRpcClient() RpcClient {
-	return rpcClient
-}
-
-var newRpcClient = func(config *btcrpcclient.ConnConfig, ntfnHandlers *btcrpcclient.NotificationHandlers) RpcClient {
-	client, err := btcrpcclient.New(config, ntfnHandlers)
-	if err != nil {
-		log.Panicf("error creating rpc client: %v", err)
-	}
-	return client
-}
-
-func StartRpcClient() {
+func NewRpcClient() RpcClient {
 	log.Println("starting rpc client")
 
 	cfg := GetConfig()
@@ -61,7 +47,11 @@ func StartRpcClient() {
 		OnBlockConnected: onBlockConnected,
 	}
 
-	client := newRpcClient(connCfg, &ntfnHandlers)
+	client, err := btcrpcclient.New(config, ntfnHandlers)
+
+	if err != nil {
+		log.Printf("error creating rpc client: %v", err)
+	}
 
 	// Register for block connect and disconnect notifications.
 	if err = client.NotifyBlocks(); err != nil {
@@ -80,11 +70,11 @@ func StartRpcClient() {
 		}
 		log.Printf("successfully created a new wallet")
 	}
-	rpcClient = client
+	return client
 }
 
-func getNewAddress() (*btcutil.Address, error) {
-	addr, err := getRpcClient().GetNewAddress()
+func getNewAddress() (btcutil.Address, error) {
+	addr, err := rpc.GetNewAddress()
 	if err != nil {
 		log.Panicf("error getting new address: %v", err)
 	}
@@ -95,13 +85,13 @@ func getNewAddress() (*btcutil.Address, error) {
 		return nil, err
 	}
 	*/
-	return &addr, nil
+	return addr, nil
 }
 
 // TODO only update occasionally; no need to check every time
 func getBlockchainHeight() (int, error) {
 	log.Printf("getting blockchain height")
-	_, height32, err := getRpcClient().GetBestBlock()
+	_, height32, err := rpc.GetBestBlock()
 	if err != nil {
 		return 1, err
 	}

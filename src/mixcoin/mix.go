@@ -5,18 +5,34 @@ import (
 	"time"
 )
 
-func mix(delay int, outAddr string) {
-	log.Printf("mixing chunk to address: %s", outAddr)
-	log.Printf("waiting %d blocks", delay)
-	time.Sleep(time.Duration(delay) * 10 * time.Minute)
+type Mix struct {
+	sigc chan string
+}
 
-	outputChunk, err := GetPool().GetRandomChunk(Mixing)
+func NewMix() *Mix {
+	mix := &Mix{
+		sigc: make(chan string, 1),
+	}
+	mix.run()
+	return mix
+}
 
-	log.Printf("sending output chunk: %v", outputChunk)
+func (m *Mix) Put(msg *ChunkMessage) {
+	delay := genDelay(msg.ReturnBy)
+	go m.signal(delay, msg.OutAddr)
+}
 
-	err = sendChunkWithFee(outputChunk, outAddr)
-	if err != nil {
-		log.Panicf("error sending chunk: ", err)
+func (m *Mix) signal(delay int, addr string) {
+	time.Sleep(time.Duration(delay*10) * time.Minute)
+	m.sigc <- addr
+}
+
+func (m *Mix) run() {
+	for {
+		select {
+		case addr := <-sigc:
+			send(addr)
+		}
 	}
 }
 

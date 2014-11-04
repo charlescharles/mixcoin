@@ -7,82 +7,67 @@ import (
 	"log"
 )
 
-type TxInfo struct {
-	receivedAmount int64
-	txOut          *btcwire.OutPoint
-}
-
-func sendChunkWithFee(inputChunk *Chunk, dest string) error {
-	log.Printf("sending the following chunk to %s:", dest)
-	log.Printf("%v", inputChunk)
-
+func send(dest string) error {
 	cfg := GetConfig()
 
-	feeChunk, err := GetPool().GetRandomChunk(Reserve)
+	feeUtxo, err := pool.Get(Reserve)
 	if err != nil {
-		log.Printf("error getting fee chunk: %v", err)
-	}
-	feeChunkAmt := feeChunk.txInfo.receivedAmount
-	feeTxOut, err := feeChunk.GetAsTxInput()
-
-	if err != nil {
-		log.Printf("error getting txinput: %v", err)
+		log.Printf("error getting input utxo: %v", err)
 	}
 
-	inputChunkAmt := inputChunk.txInfo.receivedAmount
-	inputTxOut, err := inputChunk.GetAsTxInput()
-
+	inputUtxo, err := pool.Get(Mixing)
 	if err != nil {
-		log.Printf("error getting txinput: %v", err)
+		log.Printf("error getting input utxo: %v", err)
 	}
 
-	destAmt := cfg.ChunkSize
+	feeTx := &btcjson.TransactionInput{feeUtxo.txId, uint32(feeUtxo.index)}
+	inputTx := &btcjson.TransactionInput{inputUtxo.txId, uint32(inputUtxo.index)}
+
+	changeAddr, err := decodeAddress(feeUtxo.addr)
+	if err != nil {
+		log.Printf("error decoding change address: %v", err)
+	}
 	destAddr, err := decodeAddress(dest)
 	if err != nil {
-		log.Printf("error decoding address: %v", err)
+		log.Printf("error decoding change address: %v", err)
 	}
 
-	changeAddr, err := decodeAddress(feeChunk.addr)
-	if err != nil {
-		log.Printf("error decoding address: %v", err)
-	}
-	changeAmt := feeChunkAmt + inputChunkAmt - destAmt - cfg.TxFee
+	feeAmt := btcutil.Amount(cfg.TxFee)
+	destAmt := btcutil.Amount(cfg.ChunkSize)
+	changeAmt := feeUtxo.amount + inputUtxo.amount - destAmt - feeAmt
 
 	inputs := []btcjson.TransactionInput{*feeTxOut, *inputTxOut}
 
-	outAmounts := map[btcutil.Address]btcutil.Amount{
-		destAddr:   btcutil.Amount(destAmt),
-		changeAddr: btcutil.Amount(changeAmt),
+	amounts := map[btcutil.Address]btcutil.Amount{
+		destAddr:   destAmt,
+		changeAddr: changeAmt,
 	}
 
-	msgTx, err := getRpcClient().CreateRawTransaction(inputs, outAmounts)
+	tx, err := rpc.CreateRawTransaction(inputs, amounts)
 	if err != nil {
 		log.Printf("error creating tx: %v", err)
 	}
-	log.Printf("created tx: %v", msgTx)
+	log.Printf("created tx: %v", tx)
 
-	signedTx, signed, err := getRpcClient().SignRawTransaction(msgTx)
-	log.Printf("signed: %v", signed)
+	signed, ok, err := rpc.SignRawTransaction(tx)
+	log.Printf("signed: %v", ok)
 	if err != nil {
 		log.Printf("error signing tx: %v", err)
-		return err
 	}
-	log.Printf("signed tx: %v", signedTx)
+	log.Printf("signed tx: %v", signed)
 
-	txHash, err := getRpcClient().SendRawTransaction(signedTx, true)
+	txHash, err := rpc.SendRawTransaction(signed, true)
 	if err != nil {
 		log.Printf("error sending tx: %v", err)
-		return err
 	}
 	log.Printf("sent tx with tx hash: %v", txHash)
 
-	feeChunk.txInfo.receivedAmount -= cfg.TxFee
-	if feeChunk.txInfo.receivedAmount <= 0 {
+	feeUtxo.amount -= feeAmt
+	if feeUtxo.amount <= feeAmt {
 		log.Printf("used up fee chunk")
 	} else {
-		log.Printf("adding fee chunk back to pool: %v", feeChunk)
-		GetPool().RegisterReserveChunk(feeChunk)
+		log.Printf("adding fee chunk back to pool")
+		pool.Put(Reserve, feeUtxo)
 	}
-
 	return nil
 }
