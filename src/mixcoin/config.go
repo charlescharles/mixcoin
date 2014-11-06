@@ -1,14 +1,16 @@
 package mixcoin
 
 import (
-	"github.com/conformal/btcnet"
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"github.com/conformal/btcnet"
 	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 type Config struct {
@@ -19,8 +21,9 @@ type Config struct {
 	MixAccount string // name for account containing mix addresses
 	WalletPass string // wallet passphrase
 
-	NetParams *btcnet.Params // network type: simnet, mainnet, etc.
-	ApiPort   int            // port to listen on for /chunk requests
+	NetParamName string         // the string indicating which net
+	NetParams    *btcnet.Params // network type: simnet, mainnet, etc.
+	ApiPort      int            // port to listen on for /chunk requests
 
 	MinConfirmations   int   // min confirmations we require
 	ChunkSize          int64 // standard chunk size, satoshis
@@ -31,10 +34,6 @@ type Config struct {
 	Passphrase   string // password for privring
 }
 
-func GetConfig() *Config {
-	return &config
-}
-
 var defaultConfig = Config{
 	RpcAddress: "127.0.0.1:18332",
 	RpcUser:    "mixcoin",
@@ -43,8 +42,8 @@ var defaultConfig = Config{
 	MixAccount: "mixcoin",
 	WalletPass: "Mixcoin1",
 
-	NetParams: &btcnet.TestNet3Params,
-	ApiPort:   8082,
+	NetParamName: "testnet",
+	ApiPort:      8082,
 
 	MinConfirmations:   1,
 	ChunkSize:          4000000,
@@ -55,28 +54,47 @@ var defaultConfig = Config{
 	Passphrase:   "Thereis1",
 }
 
-var config Config
-
-func init() {
+func GetConfig() *Config {
 	configFile := os.Getenv("HOME") + "/.mixcoin/config.json"
 	log.Printf("Reading " + configFile)
 
+	// read bytes, write file and exit if not present
 	configBytes, err := ioutil.ReadFile(configFile)
 	if err != nil {
 		writeDefaultConfig(configFile)
 		fmt.Println("Config file written to ~/.mixcoin/config.json. Please edit and re-run.")
 		os.Exit(1)
-		return
+		return nil
 	}
 
-	config = Config{}
+	// unmarshal into config
+	config := Config{}
 	configBuf := bytes.NewBuffer(configBytes)
-	//err = json.Unmarshal(configBuf, &config)
 	decoder := json.NewDecoder(configBuf)
-	err = decoder.Decode(&config)
-	if err != nil {
+	if err = decoder.Decode(&config); err != nil {
 		log.Panicf("Invalid configuration file %s: %v", configFile, err)
 	}
+
+	// set netparams
+	if err = parseConfig(&config); err != nil {
+		log.Panicf("Invalid configuration file: %v", err)
+	}
+
+	return &config
+}
+
+func parseConfig(config *Config) error {
+	switch strings.ToLower(config.NetParamName) {
+	case "testnet":
+		config.NetParams = &btcnet.TestNet3Params
+	case "mainnet":
+		config.NetParams = &btcnet.MainNetParams
+	case "simnet":
+		config.NetParams = &btcnet.SimNetParams
+	default:
+		return errors.New("unrecognized net param name")
+	}
+	return nil
 }
 
 func writeDefaultConfig(configFile string) {

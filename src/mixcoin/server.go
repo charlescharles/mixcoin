@@ -15,17 +15,19 @@ const (
 
 var (
 	blockchainHeight int
-	pool             *PoolManager
+	pool             PoolManager
 	rpc              RpcClient
 	mix              *Mix
+	cfg              *Config
 )
 
 func StartMixcoinServer() {
 	log.Println("starting mixcoin server")
 
+	cfg = GetConfig()
 	pool = NewPoolManager()
 	rpc = NewRpcClient()
-	mix = NewMix()
+	mix = NewMix(nil)
 
 	BootstrapPool()
 }
@@ -76,17 +78,16 @@ func onBlockConnected(blockHash *btcwire.ShaHash, height int32) {
 	go findTransactions(blockHash, int(height))
 }
 
-/**
 func prune() {
-	pool.Filter(func(msg *ChunkMessage) bool {
+	pool.Filter(func(item PoolItem) bool {
+		msg := item.(*ChunkMessage)
 		return msg.SendBy <= blockchainHeight
 	})
 }
-*/
-func findTransactions(blockHash *btcwire.ShaHash, height int) {
-	//prune()
 
-	cfg := GetConfig()
+func findTransactions(blockHash *btcwire.ShaHash, height int) {
+	prune()
+
 	minConf := cfg.MinConfirmations
 
 	log.Printf("getting receivable chunks")
@@ -160,8 +161,6 @@ func isFee(nonce int64, hash *btcwire.ShaHash, feeBips int) bool {
 }
 
 func isValidReceivedResult(result btcjson.ListUnspentResult) bool {
-	cfg := GetConfig()
-
 	// ListUnspentResult.Amount is a float64 in BTC
 	// btcutil.Amount is an int64
 	amountReceived, err := btcutil.NewAmount(result.Amount)

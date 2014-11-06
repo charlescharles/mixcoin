@@ -57,8 +57,6 @@ func (chunkMsg *ChunkMessage) String() string {
 }
 
 func validateChunkMsg(chunkMsg *ChunkMessage) error {
-	cfg := GetConfig()
-
 	if chunkMsg.Val != cfg.ChunkSize {
 		return errors.New("Invalid chunk size")
 	}

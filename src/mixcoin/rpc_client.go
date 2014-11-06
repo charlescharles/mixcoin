@@ -26,8 +26,6 @@ type RpcClient interface {
 func NewRpcClient() RpcClient {
 	log.Println("starting rpc client")
 
-	cfg := GetConfig()
-
 	log.Printf("Reading btcd cert file %s", cfg.CertFile)
 	certs, err := ioutil.ReadFile(cfg.CertFile)
 	if err != nil {
@@ -70,6 +68,7 @@ func NewRpcClient() RpcClient {
 		}
 		log.Printf("successfully created a new wallet")
 	}
+	log.Printf("successfully unlocked wallet")
 	return client
 }
 

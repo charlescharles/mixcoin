@@ -7,8 +7,6 @@ import (
 )
 
 func send(dest string) error {
-	cfg := GetConfig()
-
 	feeItem, err := pool.Get(Reserve)
 	feeUtxo := feeItem.(*Utxo)
 	if err != nil {
@@ -48,7 +46,6 @@ func send(dest string) error {
 	if err != nil {
 		log.Printf("error creating tx: %v", err)
 	}
-	log.Printf("created tx: %v", tx)
 
 	signed, ok, err := rpc.SignRawTransaction(tx)
 	log.Printf("signed: %v", ok)

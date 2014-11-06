@@ -6,37 +6,34 @@ import (
 )
 
 type Mix struct {
-	sigc chan string
+	debugc chan string
+	debug  bool
 }
 
-func NewMix() *Mix {
-	mix := &Mix{
-		sigc: make(chan string, 1),
+func NewMix(debugc chan string) *Mix {
+	mix := &Mix{}
+	if debugc != nil {
+		mix.debugc = debugc
+		mix.debug = true
 	}
-	mix.run()
 	return mix
 }
 
 func (m *Mix) Put(msg *ChunkMessage) {
-	delay := delay(msg.ReturnBy)
+	delay := generateDelay(msg.ReturnBy)
 	go m.signal(delay, msg.OutAddr)
 }
 
 func (m *Mix) signal(delay int, addr string) {
 	time.Sleep(time.Duration(delay*10) * time.Minute)
-	m.sigc <- addr
-}
-
-func (m *Mix) run() {
-	for {
-		select {
-		case addr := <-m.sigc:
-			send(addr)
-		}
+	if m.debug {
+		m.debugc <- addr
+	} else {
+		go send(addr)
 	}
 }
 
-func delay(returnBy int) int {
+func generateDelay(returnBy int) int {
 	log.Printf("generating delay with returnby %d and currheight %d", returnBy, blockchainHeight)
 	rand := randInt(returnBy - 1 - blockchainHeight)
 	log.Printf("generated delay %v", rand)

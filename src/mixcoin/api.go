@@ -2,14 +2,13 @@ package mixcoin
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"strconv"
 )
 
 func StartApiServer() {
-	port := GetConfig().ApiPort
+	port := cfg.ApiPort
 	http.HandleFunc("/chunk", apiHandleChunkRequest)
 	log.Printf("listening on %v", port)
 	portStr := ":" + strconv.Itoa(port)
@@ -32,10 +31,9 @@ func apiHandleChunkRequest(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	log.Println(chunkMsg)
 	json, err := json.Marshal(chunkMsg)
 	if err != nil {
-		fmt.Println(err)
+		log.Printf("error marshaling json: %v", err)
 		rw.WriteHeader(500)
 		return
 	}

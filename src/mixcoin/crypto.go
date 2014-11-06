@@ -27,8 +27,6 @@ func signChunkMessage(chunkMsg *ChunkMessage) error {
 	marshaledBytes, _ := json.Marshal(chunkMsg)
 	marshaledBuf := bytes.NewBuffer(marshaledBytes)
 
-	cfg := GetConfig()
-
 	keyringFileBuffer, err := os.Open(cfg.PrivRingFile)
 	if err != nil {
 		log.Panicf("error opening privring file")

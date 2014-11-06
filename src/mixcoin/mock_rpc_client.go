@@ -7,7 +7,6 @@ import (
 	"github.com/conformal/btcwire"
 	"github.com/conformal/btcws"
 	"github.com/stretchr/testify/mock"
-	"log"
 )
 
 type MockRpcClient struct {
@@ -17,7 +16,7 @@ type MockRpcClient struct {
 }
 
 func (o *MockRpcClient) ImportPrivKey(wif *btcutil.WIF) error {
-	args := o.Mock.Called()
+	args := o.Mock.Called(wif)
 	return args.Error(0)
 }
 
@@ -71,10 +70,6 @@ func (o *MockRpcClient) GetBestBlock() (*btcwire.ShaHash, int32, error) {
 	return args.Get(0).(*btcwire.ShaHash), args.Get(1).(int32), args.Error(2)
 }
 
-func mockNewRpcClient(config *btcrpcclient.ConnConfig, ntfnHandlers *btcrpcclient.NotificationHandlers) RpcClient {
-	log.Printf("creating mock rpc client")
-	client := new(MockRpcClient)
-	client.newBlockHandler = ntfnHandlers.OnBlockConnected
-	client.recvTxHandler = ntfnHandlers.OnRecvTx
-	return client
+func NewMockRpcClient() RpcClient {
+	return &MockRpcClient{}
 }
