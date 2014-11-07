@@ -45,7 +45,11 @@ var (
 )
 
 func BootstrapPool() {
-	log.Printf("bootstrapping mix pool with chunks: %v", reserve)
+	var reserveAddresses []string
+	for _, r := range reserve {
+		reserveAddresses = append(reserveAddresses, r.addr)
+	}
+	log.Printf("bootstrapping mix pool with chunks: %v", reserveAddresses)
 	for _, b := range reserve {
 		utxo, wif, err := b.normalize()
 		if err != nil {
