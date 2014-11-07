@@ -7,7 +7,24 @@ import (
 	"log"
 	"net/http"
 	"io/ioutil"
+	"math/rand"
 )
+
+type MixcoinServer struct {
+	Address string
+	Name string
+	PubKey string
+}
+
+func chooseServers(servers []*MixcoinServer, numMixes int) []*MixcoinServer {
+	n := len(servers)
+	var chosen []*MixcoinServer
+	for int i := 0; i < numMixes; i++ {
+		chosen = append(chosen, servers[rand.Intn(n)])
+	}
+
+	return chosen
+} 
 
 var (
 	chunk = &mixcoin.ChunkMessage{
@@ -19,7 +36,7 @@ var (
 		Nonce:    123,
 		Confirm:  1,
 	}
-)
+}
 
 func main() {
 	marshaled, err := json.Marshal(chunk)
@@ -49,7 +66,6 @@ func main() {
 	mixAddr := responseChunk.MixAddr
 
 }
-
 
 func verifyWarrant(msg *mixcoin.ChunkMessage, mixPubKey string) bool {
 
