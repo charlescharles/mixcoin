@@ -6,13 +6,14 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"io/ioutil"
 )
 
 var (
 	chunk = &mixcoin.ChunkMessage{
 		Val:      4000000,
-		SendBy:   306890,
-		ReturnBy: 306900,
+		SendBy:   306900,
+		ReturnBy: 306950,
 		OutAddr:  "charles",
 		Fee:      2,
 		Nonce:    123,
@@ -29,5 +30,27 @@ func main() {
 	reader := bytes.NewReader(marshaled)
 
 	res, err := http.Post("http://localhost:8082/chunk", "application/json", reader)
-	log.Printf("response: %v", res.Body)
+	if err != nil {
+		log.Printf("err")
+	}
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		log.Printf("error reading response body: %v", err)
+	}
+	defer res.Body.Close()
+
+	decoder := json.NewDecoder(bytes.NewBuffer(body))
+	responseChunk := mixcoin.ChunkMessage{}
+	decoder.Decode(&responseChunk)
+
+	log.Printf("response: %v", responseChunk)
+	log.Printf("mixaddr: %s", responseChunk.MixAddr)
+
+	mixAddr := responseChunk.MixAddr
+
+}
+
+
+func verifyWarrant(msg *mixcoin.ChunkMessage, mixPubKey string) bool {
+
 }
