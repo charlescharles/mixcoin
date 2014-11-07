@@ -3,14 +3,13 @@ package mixcoin
 import (
 	"bytes"
 	"code.google.com/p/go.crypto/openpgp"
+	"code.google.com/p/go.crypto/openpgp/armor"
 	"crypto/rand"
-	"encoding/base64"
 	"encoding/json"
-	"fmt"
-	"io/ioutil"
 	"log"
 	"math/big"
 	"os"
+	"strings"
 )
 
 func randInt(high int) int {
@@ -22,23 +21,50 @@ func randInt(high int) int {
 	return int(bigRet.Int64())
 }
 
-func signChunkMessage(chunkMsg *ChunkMessage) error {
-	log.Printf("signing chunk message")
+func serialize(chunkMsg *ChunkMessage) string {
 	marshaledBytes, _ := json.Marshal(chunkMsg)
-	marshaledBuf := bytes.NewBuffer(marshaledBytes)
+	return string(marshaledBytes)
+}
 
+func signText(entity *openpgp.Entity, text string) string {
+	b := bytes.NewBuffer(nil)
+	w, _ := armor.Encode(b, openpgp.SignatureType, nil)
+	err := openpgp.DetachSignText(w, entity, strings.NewReader(text), nil)
+	if err != nil {
+		panic(err)
+	}
+	w.Close()
+	return b.String()
+}
+
+func verifySignature(pubKey, signed, signatureArmor string) bool {
+	keyRing, err := openpgp.ReadArmoredKeyRing(strings.NewReader(pubKey))
+	if err != nil {
+		panic(err)
+	}
+
+	signer, err := openpgp.CheckArmoredDetachedSignature(
+		keyRing,
+		strings.NewReader(signed),
+		strings.NewReader(signatureArmor),
+	)
+	if err != nil {
+		panic(err)
+	}
+	return signer != nil
+}
+
+func getPgpEntity() *openpgp.Entity {
 	keyringFileBuffer, err := os.Open(cfg.PrivRingFile)
 	if err != nil {
-		log.Panicf("error opening privring file")
-		return err
+		panic(err)
 	}
 
 	defer keyringFileBuffer.Close()
 
 	entityList, err := openpgp.ReadKeyRing(keyringFileBuffer)
 	if err != nil {
-		fmt.Println(err)
-		return err
+		panic(err)
 	}
 	entity := entityList[0]
 	passphrasebyte := []byte(cfg.Passphrase)
@@ -46,19 +72,25 @@ func signChunkMessage(chunkMsg *ChunkMessage) error {
 	for _, subkey := range entity.Subkeys {
 		subkey.PrivateKey.Decrypt(passphrasebyte)
 	}
-	armoredSigBuf := new(bytes.Buffer)
-	err = openpgp.ArmoredDetachSign(armoredSigBuf, entity, marshaledBuf, nil)
-	if err != nil {
-		fmt.Println(err)
-		return err
-	}
-	armoredSigEnc, err := ioutil.ReadAll(armoredSigBuf)
-	if err != nil {
-		fmt.Println(err)
-		return err
-	}
-	armoredSig := base64.StdEncoding.EncodeToString(armoredSigEnc)
+	return entity
+}
 
-	chunkMsg.Warrant = armoredSig
-	return nil
+func signChunkMessage(chunkMsg *ChunkMessage) {
+	log.Printf("signing chunk message")
+
+	entity := getPgpEntity()
+	serialized := serialize(chunkMsg)
+	signature := signText(entity, serialized)
+	chunkMsg.Warrant = signature
+}
+
+// NOTE: not sure if this works (if setting Warrant to '' removes
+// it from the json)
+func verifyWarrant(chunkMsg *ChunkMessage, pubKey string) bool {
+	warrant := chunkMsg.Warrant
+	msgCopy := *chunkMsg
+	msgCopy.Warrant = ""
+	serialized := serialize(&msgCopy)
+
+	return verifySignature(pubKey, serialized, warrant)
 }

@@ -53,12 +53,8 @@ func handleChunkRequest(chunkMsg *ChunkMessage) error {
 
 	chunkMsg.MixAddr = encodedAddr
 
-	err = signChunkMessage(chunkMsg)
-	if err != nil {
-		log.Panicf("Couldn't sign chunk: %v", err)
-		return err
-	}
-
+	signChunkMessage(chunkMsg)
+	log.Printf("signed chunk msg")
 	registerNewChunk(encodedAddr, chunkMsg)
 	return nil
 }
