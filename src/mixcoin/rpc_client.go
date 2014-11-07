@@ -21,12 +21,13 @@ type RpcClient interface {
 	NotifyReceivedAsync([]btcutil.Address) btcrpcclient.FutureNotifyReceivedResult
 	ListUnspentMinMaxAddresses(int, int, []btcutil.Address) ([]btcjson.ListUnspentResult, error)
 	ImportPrivKey(*btcutil.WIF) error
+	SendToAddress(btcutil.Address, btcutil.Amount) (*btcwire.ShaHash, error)
 }
 
 func NewRpcClient() RpcClient {
 	log.Println("starting rpc client")
 
-	log.Printf("Reading btcd cert file %s", cfg.CertFile)
+	log.Printf("Reading btcd cert file %v", cfg.CertFile)
 	certs, err := ioutil.ReadFile(cfg.CertFile)
 	if err != nil {
 		log.Panicf("couldn't read btcd certs")

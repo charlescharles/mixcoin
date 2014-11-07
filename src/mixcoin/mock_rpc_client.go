@@ -70,6 +70,11 @@ func (o *MockRpcClient) GetBestBlock() (*btcwire.ShaHash, int32, error) {
 	return args.Get(0).(*btcwire.ShaHash), args.Get(1).(int32), args.Error(2)
 }
 
+func (o *MockRpcClient) SendToAddress(addr btcutil.Address, amt btcutil.Amount) (*btcwire.ShaHash, error) {
+	args := o.Mock.Called(addr, amt)
+	return args.Get(0).(*btcwire.ShaHash), args.Error(1)
+}
+
 func NewMockRpcClient() RpcClient {
 	return &MockRpcClient{}
 }

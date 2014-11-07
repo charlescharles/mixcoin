@@ -132,14 +132,19 @@ func findTransactions(blockHash *btcwire.ShaHash, height int) {
 		receivedAddrs = append(receivedAddrs, addr)
 	}
 
+	log.Printf("received addresses: %v", receivedAddrs)
+
 	// get the chunk messages, move to pool
 	chunkMsgs := pool.Scan(receivedAddrs)
+	log.Printf("received for chunkmessages %v", chunkMsgs)
 	for _, item := range chunkMsgs {
 		msg := item.(*ChunkMessage)
 		utxo := received[msg.MixAddr]
 		if isFee(msg.Nonce, blockHash, msg.Fee) {
+			log.Printf("retaining as fee utxo %v", utxo)
 			pool.Put(Reserve, utxo)
 		} else {
+			log.Printf("mixing utxo for message: %v", msg)
 			pool.Put(Mixing, utxo)
 			mix.Put(msg)
 		}
@@ -153,7 +158,7 @@ func isFee(nonce int64, hash *btcwire.ShaHash, feeBips int) bool {
 	hashInt := bigIntHash.Int64()
 
 	gen := nonce | hashInt
-	fee := float64(feeBips) * 1.0e4
+	fee := float64(feeBips) * 1.0e-4
 
 	source := rand.NewSource(gen)
 	rng := rand.New(source)
