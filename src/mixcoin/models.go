@@ -2,6 +2,7 @@ package mixcoin
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/conformal/btcutil"
@@ -19,6 +20,15 @@ func (u *Utxo) Key() string {
 	return u.addr
 }
 
+func (u *Utxo) Serialize() []byte {
+	serialized, err := json.Marshal(*u)
+	if err != nil {
+		log.Panicf("error serializing utxo: %v", err)
+	}
+
+	return serialized
+}
+
 type ChunkMessage struct {
 	Val      int64  `json:"val"`
 	SendBy   int    `json:"sendBy"`
@@ -34,6 +44,15 @@ type ChunkMessage struct {
 
 func (c *ChunkMessage) Key() string {
 	return c.MixAddr
+}
+
+func (c *ChunkMessage) Serialize() []byte {
+	serialized, err := json.Marshal(*c)
+	if err != nil {
+		log.Panicf("error serializing utxo: %v", err)
+	}
+
+	return serialized
 }
 
 func (chunkMsg *ChunkMessage) String() string {

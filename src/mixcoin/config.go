@@ -25,13 +25,15 @@ type Config struct {
 	NetParams    *btcnet.Params // network type: simnet, mainnet, etc.
 	ApiPort      int            // port to listen on for /chunk requests
 
-	MinConfirmations   int   // min confirmations we require
-	ChunkSize          int64 // standard chunk size, satoshis
-	MaxFutureChunkTime int   // max block height delta into the future to accept chunk contracts
-	TxFee              int64 // standard miner fee, satoshis
+	MinConfirmations   int    // min confirmations we require
+	ChunkSize          int64  // standard chunk size, satoshis
+	MaxFutureChunkTime int    // max block height delta into the future to accept chunk contracts
+	TxFee              int64  // standard miner fee, satoshis
+	DbFile             string // path to chunk database (for server)
 
 	PrivRingFile string // path to privring
 	Passphrase   string // password for privring
+
 }
 
 var defaultConfig = Config{
@@ -49,6 +51,7 @@ var defaultConfig = Config{
 	ChunkSize:          4000000,
 	MaxFutureChunkTime: 72,    // a bit less than 12 hours
 	TxFee:              10000, // 10k satoshis
+	DbFile:             os.Getenv("HOME") + "/.mixcoin/db/pool.ldb",
 
 	PrivRingFile: os.Getenv("HOME") + "/.mixcoin/secring.gpg",
 	Passphrase:   "Thereis1",

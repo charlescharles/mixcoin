@@ -6,6 +6,7 @@ import (
 
 type PoolItem interface {
 	Key() string
+	Serialize() []byte
 }
 
 type RandomizingPool struct {
