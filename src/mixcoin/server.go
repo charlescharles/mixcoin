@@ -19,12 +19,15 @@ var (
 	rpc              RpcClient
 	mix              *Mix
 	cfg              *Config
+	log 	 Logger
 )
 
 func StartMixcoinServer() {
 	log.Println("starting mixcoin server")
 
+
 	cfg = GetConfig()
+	log = log4go.NewFileLogLogger("~/.mixcoin/logfile.log")
 	pool = NewPoolManager()
 	rpc = NewRpcClient()
 	mix = NewMix(nil)
