@@ -11,14 +11,15 @@ type DB interface {
 	Get(string) PoolItem
 	Delete(string)
 	Close()
+	Items() map[string]PoolItem
 }
 
 type MixcoinDB struct {
 	db *leveldb.DB
 }
 
-func NewMixcoinDB() DB {
-	db, err := leveldb.OpenFile(cfg.DbFile, nil)
+func NewMixcoinDB(path string) DB {
+	db, err := leveldb.OpenFile(path, nil)
 
 	if err != nil {
 		log.Panicf("couldn't create or open db file at: %s", cfg.DbFile)
@@ -61,19 +62,32 @@ func (m *MixcoinDB) Close() {
 	}
 }
 
-func deserialize(val []byte) PoolItem {
+func (m *MixcoinDB) Items() map[string]PoolItem {
+	ret := make(map[string]PoolItem)
+	iter := m.db.NewIterator(nil, nil)
+	for iter.Next() {
+		key := string(iter.Key())
+		val := iter.Value()
+		item := deserialize(val)
+		ret[key] = item
+	}
+	return ret
+}
+
+func deserialize(item []byte) PoolItem {
 	// first try deserializing as a chunkmsg
-	chunkMsg := &ChunkMessage{}
-	err := json.Unmarshal(val, chunkMsg)
-	if err == nil {
-		return chunkMsg
+	chunkMsg := ChunkMessage{}
+	err := json.Unmarshal(item, &chunkMsg)
+	if (err == nil) && (chunkMsg != ChunkMessage{}) {
+		return &chunkMsg
 	}
 
-	utxo := &Utxo{}
-	err = json.Unmarshal(val, utxo)
-	if err == nil {
-		return utxo
+	utxo := Utxo{}
+	err = json.Unmarshal(item, &utxo)
+	if (err == nil) && (utxo != Utxo{}) {
+		return &utxo
 	}
+	log.Printf("item: %s", string(item))
 	log.Panicf("couldn't deserialize db item: %v", err)
 	return nil
 }

@@ -1,6 +1,7 @@
 package mixcoin
 
 import (
+	"encoding/json"
 	"github.com/stretchr/testify/assert"
 	"log"
 	"sort"
@@ -14,6 +15,14 @@ type Pair struct {
 
 func (m *Pair) Key() string {
 	return m.key
+}
+
+func (m *Pair) Serialize() []byte {
+	serialized, err := json.Marshal(m)
+	if err != nil {
+		log.Panicf("error serializing pair: %v", err)
+	}
+	return serialized
 }
 
 var (

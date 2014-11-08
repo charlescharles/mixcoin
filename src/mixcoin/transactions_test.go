@@ -6,6 +6,7 @@ import (
 	"github.com/conformal/btcutil"
 	"github.com/conformal/btcwire"
 	"github.com/stretchr/testify/mock"
+	"log"
 	"testing"
 )
 
@@ -13,17 +14,17 @@ var (
 	dest = "mzn21y12sj6fMEVghcwFHSuDjvtXo3HbU3"
 
 	aliceUtxo = &Utxo{
-		addr:   "mvA3EGSbpgGorow1oWzgAwrMEACmUnK4NU",
-		amount: btcutil.Amount(300),
-		txId:   "tx0",
-		index:  0,
+		Addr:   "mvA3EGSbpgGorow1oWzgAwrMEACmUnK4NU",
+		Amount: btcutil.Amount(300),
+		TxId:   "tx0",
+		Index:  0,
 	}
 
 	bobUtxo = &Utxo{
-		addr:   "mxp4okhCVAddcViDXxop5rBXft6zPL9NNL",
-		amount: btcutil.Amount(400),
-		txId:   "tx1",
-		index:  1,
+		Addr:   "mxp4okhCVAddcViDXxop5rBXft6zPL9NNL",
+		Amount: btcutil.Amount(400),
+		TxId:   "tx1",
+		Index:  1,
 	}
 
 	aliceInput = btcjson.TransactionInput{
@@ -51,21 +52,26 @@ func TestSend(t *testing.T) {
 	pool.(*MockPool).On("Get", Reserve).Return(aliceUtxo, nil)
 	pool.(*MockPool).On("Get", Mixing).Return(bobUtxo, nil)
 
-	/*
-		aliceAddr, _ := decodeAddress(aliceUtxo.addr)
-		destAddr, _ := decodeAddress(dest)
+	aliceAddr, _ := decodeAddress(aliceUtxo.Addr)
+	destAddr, _ := decodeAddress(dest)
 
-			rpc.(*MockRpcClient).On("CreateRawTransaction",
-				[]btcjson.TransactionInput{aliceInput, bobInput},
-				map[btcutil.Address]btcutil.Amount{
-					destAddr:  btcutil.Amount(400),
-					aliceAddr: btcutil.Amount(293),
-				}).Return(msgTx, nil)
+	var expectedTxInputs []btcjson.TransactionInput
+	expectedTxInputs = append(expectedTxInputs, aliceInput)
+	expectedTxInputs = append(expectedTxInputs, bobInput)
+
+	expectedOutMap := make(map[btcutil.Address]btcutil.Amount)
+	expectedOutMap[aliceAddr] = btcutil.Amount(400)
+	expectedOutMap[destAddr] = btcutil.Amount(293)
+
+	/*
+		rpc.(*MockRpcClient).On("CreateRawTransaction",
+			mock.AnythingOfType("[]btcjson.TransactionInput"),
+			mock.AnythingOfType("map[btcutil.Address]btcutil.Amount")).Return(msgTx, nil)
 	*/
 
-	rpc.(*MockRpcClient).On("CreateRawTransaction",
-		mock.AnythingOfType("[]btcjson.TransactionInput"),
-		mock.AnythingOfType("map[btcutil.Address]btcutil.Amount")).Return(msgTx, nil)
+	log.Printf("expectedTxInputs: %v", expectedTxInputs)
+	log.Printf("expectedOutMap: %v", expectedOutMap)
+	rpc.(*MockRpcClient).On("CreateRawTransaction", expectedTxInputs, expectedOutMap).Return(msgTx, nil)
 
 	rpc.(*MockRpcClient).On("SignRawTransaction", msgTx).Return(msgTx, true, nil)
 

@@ -9,10 +9,10 @@ func (b *ReserveBootstrap) normalize() (*Utxo, *btcutil.WIF, error) {
 	amount, err := btcutil.NewAmount(b.amount)
 
 	utxo := &Utxo{
-		addr:   b.addr,
-		amount: amount,
-		txId:   b.txId,
-		index:  b.index,
+		Addr:   b.addr,
+		Amount: amount,
+		TxId:   b.txId,
+		Index:  b.index,
 	}
 
 	wif, err := btcutil.DecodeWIF(b.wif)

@@ -19,12 +19,14 @@ var (
 	rpc              RpcClient
 	mix              *Mix
 	cfg              *Config
+	db               DB
 )
 
 func StartMixcoinServer() {
 	log.Println("starting mixcoin server")
 
 	cfg = GetConfig()
+	db = NewMixcoinDB(cfg.DbFile)
 	pool = NewPoolManager()
 	rpc = NewRpcClient()
 	mix = NewMix(nil)
@@ -116,10 +118,10 @@ func findTransactions(blockHash *btcwire.ShaHash, height int) {
 		}
 
 		received[result.Address] = &Utxo{
-			addr:   result.Address,
-			amount: amount,
-			txId:   result.TxId,
-			index:  int(result.Vout),
+			Addr:   result.Address,
+			Amount: amount,
+			TxId:   result.TxId,
+			Index:  int(result.Vout),
 		}
 	}
 

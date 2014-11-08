@@ -10,14 +10,14 @@ import (
 )
 
 type Utxo struct {
-	addr   string
-	amount btcutil.Amount
-	txId   string
-	index  int
+	Addr   string
+	Amount btcutil.Amount
+	TxId   string
+	Index  int
 }
 
 func (u *Utxo) Key() string {
-	return u.addr
+	return u.Addr
 }
 
 func (u *Utxo) Serialize() []byte {
