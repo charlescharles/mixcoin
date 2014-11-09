@@ -65,10 +65,12 @@ func BootstrapPool() {
 }
 
 func LoadReserves() {
+	log.Printf("loading reserve utxos from db")
 	items := db.Items()
 	for _, item := range items {
 		if isUtxo(item) {
 			utxo := item.(*Utxo)
+			log.Printf("read utxo from db: %v", utxo)
 			pool.Put(Reserve, utxo)
 		} else {
 			log.Panicf("db has a leftover chunkmsg")
@@ -77,5 +79,5 @@ func LoadReserves() {
 }
 
 func isUtxo(item PoolItem) bool {
-	return reflect.TypeOf(item) == reflect.TypeOf(*Utxo{})
+	return reflect.TypeOf(item) == reflect.TypeOf(&Utxo{})
 }

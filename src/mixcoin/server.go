@@ -58,12 +58,15 @@ func HandleShutdown() {
 }
 
 func shutdown() {
-	isShutdown = true
 	// do we need to rpc.Disconnect()?
-
+	isShutdown = true
 	mix.Shutdown()
+	log.Printf("shutdown mix")
 	pool.Shutdown()
+	log.Printf("shutdown pool")
 	db.Close()
+	log.Printf("shutdown db")
+	os.Exit(1)
 }
 
 func handleChunkRequest(chunkMsg *ChunkMessage) error {
@@ -75,7 +78,6 @@ func handleChunkRequest(chunkMsg *ChunkMessage) error {
 		return err
 	}
 
-	log.Printf("generating new address")
 	addr, err := getNewAddress()
 	if err != nil {
 		log.Panicf("Unable to create new address: %v", err)
@@ -96,9 +98,6 @@ func handleChunkRequest(chunkMsg *ChunkMessage) error {
 func registerNewChunk(encodedAddr string, chunkMsg *ChunkMessage) {
 	log.Printf("registering new chunk at address %s", encodedAddr)
 	pool.Put(Receivable, chunkMsg)
-	log.Printf("added chunk to pool")
-	decoded, _ := decodeAddress(encodedAddr)
-	log.Printf("set notification for address %s", decoded)
 }
 
 func onBlockConnected(blockHash *btcwire.ShaHash, height int32) {

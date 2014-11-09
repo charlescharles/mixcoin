@@ -40,6 +40,7 @@ func (p *MixPoolManager) Shutdown() {
 }
 
 func (p *MixPoolManager) Put(t PoolType, item PoolItem) {
+	db.Put(item)
 	switch t {
 	case Receivable:
 		p.receivable.Put(item)
@@ -51,16 +52,25 @@ func (p *MixPoolManager) Put(t PoolType, item PoolItem) {
 }
 
 func (p *MixPoolManager) Get(t PoolType) (PoolItem, error) {
+	var item PoolItem
+	item = nil
+	var err error
 	switch t {
 	case Receivable:
-		return nil, errors.New("cannot get poolitem from receivable pool")
+		err = errors.New("cannot get poolitem from receivable pool")
 	case Mixing:
-		return p.mixing.Get()
+		item, err = p.mixing.Get()
 	case Reserve:
-		return p.reserve.Get()
+		item, err = p.reserve.Get()
 	default:
-		return nil, errors.New("unhandled pooltype")
+		err = errors.New("unhandled pooltype")
 	}
+
+	if err != nil {
+		db.Delete(item.Key())
+	}
+
+	return item, err
 }
 
 func (p *MixPoolManager) ReceivingKeys() []string {

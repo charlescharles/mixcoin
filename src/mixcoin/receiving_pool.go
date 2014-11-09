@@ -74,6 +74,7 @@ func (p *ReceivingPool) run() {
 			}
 			for _, key := range remove {
 				delete(table, key)
+				db.Delete(key)
 			}
 		}
 	}

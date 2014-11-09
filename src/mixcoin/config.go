@@ -4,10 +4,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"github.com/conformal/btcnet"
 	"io/ioutil"
 	"log"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -51,10 +51,60 @@ var defaultConfig = Config{
 	ChunkSize:          4000000,
 	MaxFutureChunkTime: 72,    // a bit less than 12 hours
 	TxFee:              10000, // 10k satoshis
-	DbFile:             os.Getenv("HOME") + "/.mixcoin/db/pool.ldb",
+	DbFile:             os.Getenv("HOME") + "/.mixcoin/db/mixcoin.db",
 
 	PrivRingFile: os.Getenv("HOME") + "/.mixcoin/secring.gpg",
 	Passphrase:   "Thereis1",
+}
+
+func validateConfig(cfg *Config) error {
+	if cfg.RpcAddress == "" {
+		return errors.New("RpcAddress must be set")
+	}
+	if cfg.RpcUser == "" {
+		return errors.New("RpcUser must be set")
+	}
+	if cfg.RpcPass == "" {
+		return errors.New("RpcPass must be set")
+	}
+	if cfg.CertFile == "" {
+		return errors.New("CertFile must be set")
+	}
+	if cfg.MixAccount == "" {
+		return errors.New("MixAccount must be set")
+	}
+	if cfg.WalletPass == "" {
+		return errors.New("WalletPass must be set")
+	}
+	if cfg.NetParamName == "" {
+		return errors.New("NetParamName must be set")
+	}
+	if cfg.ApiPort == 0 {
+		return errors.New("ApiPort must be set")
+	}
+	if cfg.DbFile == "" {
+		return errors.New("DbFile must be set")
+	}
+	if cfg.PrivRingFile == "" {
+		return errors.New("PrivRingFile must be set")
+	}
+	if cfg.Passphrase == "" {
+		return errors.New("Passphrase must be set")
+	}
+	if cfg.MinConfirmations < 0 {
+		return errors.New("MinConfirmations must be >= 0")
+	}
+	if cfg.ChunkSize == 0 {
+		return errors.New("ChunkSize must be > 0")
+	}
+	if cfg.TxFee < 0 {
+		return errors.New("TxFee must be >= 0")
+	}
+	if _, err := url.Parse(cfg.RpcAddress); err != nil {
+		return errors.New("invalid RPC address")
+	}
+
+	return nil
 }
 
 func GetConfig() *Config {
@@ -65,7 +115,7 @@ func GetConfig() *Config {
 	configBytes, err := ioutil.ReadFile(configFile)
 	if err != nil {
 		writeDefaultConfig(configFile)
-		fmt.Println("Config file written to ~/.mixcoin/config.json. Please edit and re-run.")
+		log.Println("Config file written to ~/.mixcoin/config.json. Please edit and re-run.")
 		os.Exit(1)
 		return nil
 	}
@@ -76,6 +126,12 @@ func GetConfig() *Config {
 	decoder := json.NewDecoder(configBuf)
 	if err = decoder.Decode(&config); err != nil {
 		log.Panicf("Invalid configuration file %s: %v", configFile, err)
+	}
+
+	if err = validateConfig(&config); err != nil {
+		log.Printf("Invalid configuration file: %v", err)
+		os.Exit(1)
+		return nil
 	}
 
 	// set netparams
