@@ -16,6 +16,12 @@ func StartApiServer() {
 }
 
 func apiHandleChunkRequest(rw http.ResponseWriter, req *http.Request) {
+	if isShutdown {
+		log.Printf("shutting down, refusing chunk request")
+		rw.WriteHeader(500)
+		return
+	}
+
 	decoder := json.NewDecoder(req.Body)
 	var chunkMsg ChunkMessage
 	err := decoder.Decode(&chunkMsg)

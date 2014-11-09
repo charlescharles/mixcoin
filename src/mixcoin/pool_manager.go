@@ -18,6 +18,7 @@ type PoolManager interface {
 	ReceivingKeys() []string
 	Scan([]string) []PoolItem
 	Filter(func(PoolItem) bool)
+	Shutdown()
 }
 
 type MixPoolManager struct {
@@ -32,6 +33,10 @@ func NewPoolManager() PoolManager {
 		mixing:     NewRandomizingPool(),
 		reserve:    NewRandomizingPool(),
 	}
+}
+
+func (p *MixPoolManager) Shutdown() {
+	// not sure what to do here -- should this do anything?
 }
 
 func (p *MixPoolManager) Put(t PoolType, item PoolItem) {

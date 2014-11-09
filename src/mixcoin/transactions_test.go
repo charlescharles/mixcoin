@@ -60,18 +60,12 @@ func TestSend(t *testing.T) {
 	expectedTxInputs = append(expectedTxInputs, bobInput)
 
 	expectedOutMap := make(map[btcutil.Address]btcutil.Amount)
-	expectedOutMap[aliceAddr] = btcutil.Amount(400)
-	expectedOutMap[destAddr] = btcutil.Amount(293)
-
-	/*
-		rpc.(*MockRpcClient).On("CreateRawTransaction",
-			mock.AnythingOfType("[]btcjson.TransactionInput"),
-			mock.AnythingOfType("map[btcutil.Address]btcutil.Amount")).Return(msgTx, nil)
-	*/
+	expectedOutMap[aliceAddr] = btcutil.Amount(230)
+	expectedOutMap[destAddr] = btcutil.Amount(400)
 
 	log.Printf("expectedTxInputs: %v", expectedTxInputs)
 	log.Printf("expectedOutMap: %v", expectedOutMap)
-	rpc.(*MockRpcClient).On("CreateRawTransaction", expectedTxInputs, expectedOutMap).Return(msgTx, nil)
+	rpc.(*MockRpcClient).On("CreateRawTransaction", expectedTxInputs, mock.AnythingOfType("map[btcutil.Address]btcutil.Amount")).Return(msgTx, nil)
 
 	rpc.(*MockRpcClient).On("SignRawTransaction", msgTx).Return(msgTx, true, nil)
 

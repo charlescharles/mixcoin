@@ -31,6 +31,10 @@ func (p *MockPool) Put(t PoolType, i PoolItem) {
 	p.Mock.Called(t, i)
 }
 
+func (p *MockPool) Shutdown() {
+	return
+}
+
 func NewMockPool() *MockPool {
 	return &MockPool{}
 }

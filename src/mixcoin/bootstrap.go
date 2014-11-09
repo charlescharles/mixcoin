@@ -3,6 +3,7 @@ package mixcoin
 import (
 	"github.com/conformal/btcutil"
 	"log"
+	"reflect"
 )
 
 func (b *ReserveBootstrap) normalize() (*Utxo, *btcutil.WIF, error) {
@@ -61,4 +62,20 @@ func BootstrapPool() {
 		}
 		pool.Put(Reserve, utxo)
 	}
+}
+
+func LoadReserves() {
+	items := db.Items()
+	for _, item := range items {
+		if isUtxo(item) {
+			utxo := item.(*Utxo)
+			pool.Put(Reserve, utxo)
+		} else {
+			log.Panicf("db has a leftover chunkmsg")
+		}
+	}
+}
+
+func isUtxo(item PoolItem) bool {
+	return reflect.TypeOf(item) == reflect.TypeOf(*Utxo{})
 }

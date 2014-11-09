@@ -7,6 +7,9 @@ import (
 	"log"
 	"math/big"
 	"math/rand"
+	"os"
+	"os/signal"
+	"syscall"
 )
 
 const (
@@ -15,12 +18,17 @@ const (
 
 var (
 	blockchainHeight int
+	isShutdown       bool
 	pool             PoolManager
 	rpc              RpcClient
 	mix              *Mix
 	cfg              *Config
 	db               DB
 )
+
+func init() {
+	isShutdown = false
+}
 
 func StartMixcoinServer() {
 	log.Println("starting mixcoin server")
@@ -32,6 +40,30 @@ func StartMixcoinServer() {
 	mix = NewMix(nil)
 
 	BootstrapPool()
+	LoadReserves()
+
+	HandleShutdown()
+}
+
+func HandleShutdown() {
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	go func() {
+		for sig := range c {
+			if sig == syscall.SIGINT {
+				shutdown()
+			}
+		}
+	}()
+}
+
+func shutdown() {
+	isShutdown = true
+	// do we need to rpc.Disconnect()?
+
+	mix.Shutdown()
+	pool.Shutdown()
+	db.Close()
 }
 
 func handleChunkRequest(chunkMsg *ChunkMessage) error {
