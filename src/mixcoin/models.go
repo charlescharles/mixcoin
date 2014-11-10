@@ -1,12 +1,12 @@
 package mixcoin
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/conformal/btcutil"
 	"log"
+
+	"github.com/conformal/btcutil"
 )
 
 type Utxo struct {
@@ -56,24 +56,19 @@ func (c *ChunkMessage) Serialize() []byte {
 }
 
 func (chunkMsg *ChunkMessage) String() string {
-	var buffer bytes.Buffer
-	buffer.WriteString("\n-------------\n")
-
-	buffer.WriteString(fmt.Sprintf(`
-    val: %d
-    sendby: %d
-    returnby: %d
-    outAddr: %s
-	fee: %d
-    nonce: %d
-    confirm: %d
-    mixAddr: %s
-    warrant: %s`,
-		chunkMsg.Val, chunkMsg.SendBy, chunkMsg.ReturnBy, chunkMsg.OutAddr, chunkMsg.Fee, chunkMsg.Nonce, chunkMsg.Confirm, chunkMsg.MixAddr, chunkMsg.Warrant))
-
-	buffer.WriteString("\n-------------\n")
-
-	return buffer.String()
+	return fmt.Sprintf(`
+	{
+		val: \t%d
+		sendby: \t%d
+		returnby: \t%d
+		outAddr: \t%s
+		fee: \t%d
+		nonce: \t%d
+		confirm: \t%d
+		mixAddr: \t%s
+		warrant: \t%s
+	}`,
+		chunkMsg.Val, chunkMsg.SendBy, chunkMsg.ReturnBy, chunkMsg.OutAddr, chunkMsg.Fee, chunkMsg.Nonce, chunkMsg.Confirm, chunkMsg.MixAddr, chunkMsg.Warrant)
 }
 
 func validateChunkMsg(chunkMsg *ChunkMessage) error {
