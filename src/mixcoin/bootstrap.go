@@ -1,9 +1,10 @@
 package mixcoin
 
 import (
-	"github.com/conformal/btcutil"
 	"log"
 	"reflect"
+
+	"github.com/conformal/btcutil"
 )
 
 func (b *ReserveBootstrap) normalize() (*Utxo, *btcutil.WIF, error) {
@@ -37,8 +38,8 @@ var (
 	reserve = []*ReserveBootstrap{
 		&ReserveBootstrap{
 			addr:   "mjadFfF2h3sNpU9iMETSiECCz7ArKdkx94",
-			amount: 5.7,
-			txId:   "4a708f8563a074b47585f0830d75b8afb3c8073fda2b972e2388f50a2eb03bc4",
+			amount: 5.6,
+			txId:   "3ce5b0589bbcb592cf19d3d21243efcdabfbdd2beacd6d6c8f5a2a61ebea06ef",
 			index:  1,
 			wif:    "92jwjgG3e7o8EcXAnYzjiVm3ukBawd34gQuYd7QuNaVUgLJc4Ue",
 		},
@@ -70,10 +71,11 @@ func LoadReserves() {
 	for _, item := range items {
 		if isUtxo(item) {
 			utxo := item.(*Utxo)
-			log.Printf("read utxo from db: %v", utxo)
-			pool.Put(Reserve, utxo)
+			log.Printf("read utxo from db: %+v", utxo)
 		} else {
-			log.Panicf("db has a leftover chunkmsg")
+			msg := item.(*ChunkMessage)
+			log.Printf("db has a leftover chunkmsg: %+v", msg)
+			db.Delete(msg.Key())
 		}
 	}
 }

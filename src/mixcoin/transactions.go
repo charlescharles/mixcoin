@@ -1,9 +1,10 @@
 package mixcoin
 
 import (
+	"log"
+
 	"github.com/conformal/btcjson"
 	"github.com/conformal/btcutil"
-	"log"
 )
 
 func send(dest string) error {
@@ -42,11 +43,13 @@ func send(dest string) error {
 		changeAddr: changeAmt,
 	}
 
-	log.Printf("creating raw tx with inputs: %v\namounts:%v", inputs, amounts)
+	log.Printf("creating raw tx with inputs: %+v\namounts:%+v", inputs, amounts)
 	tx, err := rpc.CreateRawTransaction(inputs, amounts)
 	if err != nil {
 		log.Printf("error creating tx: %v", err)
 	}
+
+	log.Printf("created tx: %+v", tx)
 
 	signed, ok, err := rpc.SignRawTransaction(tx)
 	log.Printf("signed: %v", ok)
@@ -57,11 +60,12 @@ func send(dest string) error {
 
 	txHash, err := rpc.SendRawTransaction(signed, true)
 	if err != nil {
-		log.Printf("error sending tx: %v", err)
+		log.Printf("error sending tx: %+v", err)
 	}
 	log.Printf("sent tx with tx hash: %v", txHash)
 
 	feeUtxo.Amount -= feeAmt
+	feeUtxo.TxId = txHash.String()
 	if feeUtxo.Amount <= feeAmt {
 		log.Printf("used up fee chunk")
 	} else {

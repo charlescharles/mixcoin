@@ -89,12 +89,12 @@ func getNewAddress() (btcutil.Address, error) {
 }
 
 // TODO only update occasionally; no need to check every time
-func getBlockchainHeight() (int, error) {
+func getBlockchainHeight() int {
 	log.Printf("getting blockchain height")
 	_, height32, err := rpc.GetBestBlock()
 	if err != nil {
-		return 1, err
+		log.Panicf("error getting blockchain height: %v", err)
 	}
 	log.Printf("got blockchain height: %v", height32)
-	return int(height32), nil
+	return int(height32)
 }

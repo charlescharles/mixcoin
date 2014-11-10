@@ -63,7 +63,8 @@ func (chunkMsg *ChunkMessage) String() string {
     val: %d
     sendby: %d
     returnby: %d
-    outAddr: %sfee: %d
+    outAddr: %s
+	fee: %d
     nonce: %d
     confirm: %d
     mixAddr: %s
@@ -83,10 +84,8 @@ func validateChunkMsg(chunkMsg *ChunkMessage) error {
 		return errors.New("Invalid number of confirmations")
 	}
 
-	height, err := getBlockchainHeight()
-	if err != nil {
-		return err
-	}
+	height := getBlockchainHeight()
+
 	blockchainHeight = height
 
 	if chunkMsg.SendBy-blockchainHeight > cfg.MaxFutureChunkTime {
@@ -98,6 +97,5 @@ func validateChunkMsg(chunkMsg *ChunkMessage) error {
 	if chunkMsg.ReturnBy-chunkMsg.SendBy < 2 {
 		return errors.New("not enough time between sendby and returnby")
 	}
-	log.Printf("validated block")
 	return nil
 }

@@ -47,7 +47,8 @@ var defaultConfig = Config{
 	NetParamName: "testnet",
 	ApiPort:      8082,
 
-	MinConfirmations:   1,
+	// btcwallet#ListUnspentMinMaxAddresses requires tx.confirmations > minconf, not >=
+	MinConfirmations:   0,
 	ChunkSize:          4000000,
 	MaxFutureChunkTime: 72,    // a bit less than 12 hours
 	TxFee:              10000, // 10k satoshis

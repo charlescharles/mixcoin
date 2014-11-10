@@ -2,14 +2,15 @@ package mixcoin
 
 import (
 	"bytes"
-	"code.google.com/p/go.crypto/openpgp"
-	"code.google.com/p/go.crypto/openpgp/armor"
 	"crypto/rand"
 	"encoding/json"
 	"log"
 	"math/big"
 	"os"
 	"strings"
+
+	"code.google.com/p/go.crypto/openpgp"
+	"code.google.com/p/go.crypto/openpgp/armor"
 )
 
 func randInt(high int) int {

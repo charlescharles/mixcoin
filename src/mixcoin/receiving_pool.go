@@ -1,5 +1,9 @@
 package mixcoin
 
+import (
+	"log"
+)
+
 type ReceivingPool struct {
 	putc    chan PoolItem
 	recvc   chan []string
@@ -69,6 +73,7 @@ func (p *ReceivingPool) run() {
 			var remove []string
 			for key, item := range table {
 				if f(item) {
+					log.Printf("pruning key %s", key)
 					remove = append(remove, key)
 				}
 			}

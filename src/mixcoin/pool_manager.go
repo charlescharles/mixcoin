@@ -66,7 +66,7 @@ func (p *MixPoolManager) Get(t PoolType) (PoolItem, error) {
 		err = errors.New("unhandled pooltype")
 	}
 
-	if err != nil {
+	if err == nil {
 		db.Delete(item.Key())
 	}
 

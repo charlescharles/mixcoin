@@ -1,15 +1,17 @@
 package mixcoin
 
 import (
-	"github.com/conformal/btcjson"
-	"github.com/conformal/btcutil"
-	"github.com/conformal/btcwire"
+	"errors"
 	"log"
 	"math/big"
 	"math/rand"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/conformal/btcjson"
+	"github.com/conformal/btcutil"
+	"github.com/conformal/btcwire"
 )
 
 const (
@@ -18,7 +20,7 @@ const (
 
 var (
 	blockchainHeight int
-	isShutdown       bool
+	stopping         bool
 	pool             PoolManager
 	rpc              RpcClient
 	mix              *Mix
@@ -27,7 +29,7 @@ var (
 )
 
 func init() {
-	isShutdown = false
+	stopping = false
 }
 
 func StartMixcoinServer() {
@@ -37,11 +39,11 @@ func StartMixcoinServer() {
 	db = NewMixcoinDB(cfg.DbFile)
 	pool = NewPoolManager()
 	rpc = NewRpcClient()
-	mix = NewMix(nil)
+	blockchainHeight = getBlockchainHeight()
 
+	mix = NewMix(nil)
 	BootstrapPool()
 	LoadReserves()
-
 	HandleShutdown()
 }
 
@@ -59,7 +61,7 @@ func HandleShutdown() {
 
 func shutdown() {
 	// do we need to rpc.Disconnect()?
-	isShutdown = true
+	stopping = true
 	mix.Shutdown()
 	log.Printf("shutdown mix")
 	pool.Shutdown()
@@ -70,7 +72,10 @@ func shutdown() {
 }
 
 func handleChunkRequest(chunkMsg *ChunkMessage) error {
-	log.Printf("handling chunk request: %s", chunkMsg)
+	if stopping {
+		return errors.New("refused request; mixcoin shutting down")
+	}
+	log.Printf("handling chunk request: %+v", chunkMsg)
 
 	err := validateChunkMsg(chunkMsg)
 	if err != nil {
@@ -90,7 +95,6 @@ func handleChunkRequest(chunkMsg *ChunkMessage) error {
 	chunkMsg.MixAddr = encodedAddr
 
 	signChunkMessage(chunkMsg)
-	log.Printf("signed chunk msg")
 	registerNewChunk(encodedAddr, chunkMsg)
 	return nil
 }
@@ -101,6 +105,9 @@ func registerNewChunk(encodedAddr string, chunkMsg *ChunkMessage) {
 }
 
 func onBlockConnected(blockHash *btcwire.ShaHash, height int32) {
+	if stopping {
+		return
+	}
 	log.Printf("new block connected with hash %v, height %d", blockHash, height)
 
 	blockchainHeight = int(height)
@@ -130,11 +137,12 @@ func findTransactions(blockHash *btcwire.ShaHash, height int) {
 		}
 		receivableAddrs = append(receivableAddrs, decoded)
 	}
+	log.Printf("receivable addresses: %v", receivableAddrs)
 	receivedByAddress, err := rpc.ListUnspentMinMaxAddresses(minConf, MAX_CONF, receivableAddrs)
 	if err != nil {
 		log.Panicf("error listing unspent by address: %v", err)
 	}
-	log.Printf("received transactions: %v", receivedByAddress)
+	log.Printf("received transactions: %+v", receivedByAddress)
 
 	// make addr -> utxo map of received txs
 	received := make(map[string]*Utxo)
@@ -165,7 +173,7 @@ func findTransactions(blockHash *btcwire.ShaHash, height int) {
 
 	// get the chunk messages, move to pool
 	chunkMsgs := pool.Scan(receivedAddrs)
-	log.Printf("received for chunkmessages %v", chunkMsgs)
+	log.Printf("received for chunkmessages %+v", chunkMsgs)
 	for _, item := range chunkMsgs {
 		msg := item.(*ChunkMessage)
 		utxo := received[msg.MixAddr]

@@ -16,7 +16,7 @@ func StartApiServer() {
 }
 
 func apiHandleChunkRequest(rw http.ResponseWriter, req *http.Request) {
-	if isShutdown {
+	if stopping {
 		log.Printf("shutting down, refusing chunk request")
 		rw.WriteHeader(500)
 		return

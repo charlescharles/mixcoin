@@ -6,13 +6,15 @@ import (
 )
 
 type Mix struct {
-	debugc    chan string
-	debug     bool
-	shutdownc []chan struct{}
+	debugc chan string
+	debug  bool
+	quitc  chan struct{}
 }
 
 func NewMix(debugc chan string) *Mix {
-	mix := &Mix{}
+	mix := &Mix{
+		quitc: make(chan struct{}),
+	}
 	if debugc != nil {
 		mix.debugc = debugc
 		mix.debug = true
@@ -22,19 +24,17 @@ func NewMix(debugc chan string) *Mix {
 
 func (m *Mix) Shutdown() {
 	log.Printf("shutting down mix...")
-	for _, c := range m.shutdownc {
-		c <- struct{}{}
-	}
+	close(m.quitc)
+	log.Printf("done shutting down mix")
 }
 
 func (m *Mix) Put(msg *ChunkMessage) {
+	log.Printf("mixing chunk: %v", msg)
 	delay := generateDelay(msg.ReturnBy)
 
 	// TODO: pretty sure these should all be unbuffered chans
 	// because we want Mix#Shutdown to block
-	shutdown := make(chan struct{})
-	m.shutdownc = append(m.shutdownc, shutdown)
-	go m.signal(delay, msg.OutAddr, shutdown)
+	go m.signal(delay, msg.OutAddr, m.quitc)
 }
 
 func (m *Mix) signal(delay int, addr string, shutdown chan struct{}) {
@@ -44,7 +44,7 @@ func (m *Mix) signal(delay int, addr string, shutdown chan struct{}) {
 		select {
 		case <-time.After(time.Duration(delay*10) * time.Minute):
 			go send(addr)
-		case <-shutdown:
+		case <-m.quitc:
 			log.Printf("sending chunk early as part of shutdown")
 			go send(addr)
 		}
