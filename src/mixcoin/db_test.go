@@ -2,9 +2,10 @@ package mixcoin
 
 import (
 	"fmt"
-	"github.com/conformal/btcutil"
-	"reflect"
 	"testing"
+
+	"github.com/conformal/btcutil"
+	"github.com/stretchr/testify/assert"
 )
 
 var (
@@ -29,20 +30,12 @@ var (
 
 func TestSerialization(t *testing.T) {
 	serialized := fakeChunkMsg.Serialize()
-	msg := deserialize(serialized).(*ChunkMessage)
-	if !reflect.DeepEqual(fakeChunkMsg, *msg) {
-		err := "chunk msg incorrectly deserialized:\n"
-		err += fmt.Sprintf("want: %v\ngot: %v\n", fakeChunkMsg, *msg)
-		t.Errorf(err)
-	}
+	msg := *deserialize(serialized).(*ChunkMessage)
+	assert.Equal(t, fakeChunkMsg, msg, "ChunkMessage incorrectly de/serialized")
 
 	serialized = fakeUtxo.Serialize()
-	utxo := deserialize(serialized).(*Utxo)
-	if !reflect.DeepEqual(fakeUtxo, *utxo) {
-		err := "utxo incorrectly deserialized:\n"
-		err += fmt.Sprintf("want: %v\ngot: %v\n", fakeUtxo, *utxo)
-		t.Errorf(err)
-	}
+	utxo := *deserialize(serialized).(*Utxo)
+	assert.Equal(t, fakeUtxo, utxo, "UTXO incorrectly de/serialized")
 }
 
 func TestPersistence(t *testing.T) {
@@ -79,23 +72,17 @@ func TestPersistence(t *testing.T) {
 	for _, chunkAddr := range chunkAddrs {
 		want := chunkTable[chunkAddr]
 		got := db.Get(chunkAddr)
-		if !reflect.DeepEqual(want, got) {
-			t.Errorf("want chunk: %v\ngot chunk: %v\n", want, got)
-		}
+		assert.Equal(t, want, got, "chunk incorrectly retrieved")
 		db.Delete(chunkAddr)
 	}
 
 	for _, utxoAddr := range utxoAddrs {
 		want := utxoTable[utxoAddr]
 		got := db.Get(utxoAddr)
-		if !reflect.DeepEqual(want, got) {
-			t.Errorf("want utxo: %v\ngot utxo: %v\n", want, got)
-		}
+		assert.Equal(t, want, got, "utxo incorrectly retrieved")
 		db.Delete(utxoAddr)
 	}
 
 	items := db.Items()
-	if len(items) != 0 {
-		t.Errorf("db still contains %d items: %v", len(items), items)
-	}
+	assert.Equal(t, len(items), 0, fmt.Sprintf("db still contains %d items: %+v", len(items), items))
 }

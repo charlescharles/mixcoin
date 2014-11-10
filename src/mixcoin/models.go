@@ -58,15 +58,15 @@ func (c *ChunkMessage) Serialize() []byte {
 func (chunkMsg *ChunkMessage) String() string {
 	return fmt.Sprintf(`
 	{
-		val: \t%d
-		sendby: \t%d
-		returnby: \t%d
-		outAddr: \t%s
-		fee: \t%d
-		nonce: \t%d
-		confirm: \t%d
-		mixAddr: \t%s
-		warrant: \t%s
+		val: %d
+		sendby: %d
+		returnby: %d
+		outAddr: %s
+		fee: %d
+		nonce: %d
+		confirm: %d
+		mixAddr: %s
+		warrant: %s
 	}`,
 		chunkMsg.Val, chunkMsg.SendBy, chunkMsg.ReturnBy, chunkMsg.OutAddr, chunkMsg.Fee, chunkMsg.Nonce, chunkMsg.Confirm, chunkMsg.MixAddr, chunkMsg.Warrant)
 }
