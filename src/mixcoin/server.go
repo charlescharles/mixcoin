@@ -68,7 +68,7 @@ func shutdown() {
 	log.Printf("shutdown pool")
 	db.Close()
 	log.Printf("shutdown db")
-	os.Exit(1)
+	os.Exit(0)
 }
 
 func handleChunkRequest(chunkMsg *ChunkMessage) error {

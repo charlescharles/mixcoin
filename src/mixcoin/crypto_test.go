@@ -2,11 +2,11 @@ package mixcoin
 
 import (
 	"bytes"
+	"testing"
 
 	"code.google.com/p/go.crypto/openpgp"
 	"code.google.com/p/go.crypto/openpgp/armor"
-
-	"testing"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestSig(t *testing.T) {
@@ -34,9 +34,5 @@ func TestSig(t *testing.T) {
 	armoredPK := armorWriter.String()
 	t.Logf("got armored pk from entity:\n%s", armoredPK)
 
-	verified := verifySignature(armoredPK, text, sig)
-	if !verified {
-		t.Logf("unsuccessful signature verification!")
-		t.Fail()
-	}
+	assert.True(t, verifySignature(armoredPK, text, sig), "unsuccessful signature verification")
 }
